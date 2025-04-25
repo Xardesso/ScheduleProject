@@ -1,0 +1,682 @@
+/* Style dla nawigacji */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  padding: 15px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.nav-left {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-left button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.nav-left button:hover {
+  background-color: #e0e0e0;
+}
+
+.nav-left button.active {
+  background-color: #1976d2;
+  color: white;
+  font-weight: bold;
+  border-color: #1976d2;
+}
+
+.nav-left button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.week-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.week-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.week-display {
+  padding: 8px 15px;
+  background-color: #e8f0fe;
+  border-radius: 4px;
+  min-width: 150px;
+  text-align: center;
+}
+
+/* Styl kontenera głównego */
+.app-container {
+  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+.content {
+  padding: 0 20px;
+}
+
+/* Style dla komponentu dostępności */
+.availability-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+}
+
+.availability-container h2 {
+  color: #2170c2;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.availability-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.agent-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-selector label {
+  font-weight: bold;
+}
+
+.agent-select {
+  padding: 8px 10px;
+  min-width: 200px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.availability-instruction {
+  margin-bottom: 15px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+}
+
+.availability-table-container {
+  margin-top: 20px;
+}
+
+.availability-table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.availability-table th {
+  background-color: #2170c2;
+  color: white;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid #1565c0;
+}
+
+.date-subheader {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #e8f0fe;
+  font-weight: normal;
+}
+
+.hour-cell {
+  background-color: #f0f8ff;
+  font-weight: bold;
+  border-right: 2px solid #2170c2;
+  text-align: center;
+}
+
+.availability-cell {
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s;
+  text-align: center;
+  height: 40px;
+  border: 1px solid #e0e0e0;
+}
+
+.availability-cell.available {
+  background-color: rgba(76, 175, 80, 0.2); /* Jasne zielone tło */
+}
+
+.availability-cell:not(.available) {
+  background-color: rgba(244, 67, 54, 0.1); /* Jasne czerwone tło */
+}
+
+.availability-cell:hover {
+  opacity: 0.8;
+}
+
+.availability-check {
+  color: #4caf50;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.availability-cross {
+  color: #f44336;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.pending-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: #ff9800;
+  font-weight: bold;
+}
+
+.pending-info {
+  margin-top: 10px;
+  color: #ff9800;
+  font-style: italic;
+  text-align: center;
+}
+
+.no-agent-selected {
+  padding: 40px;
+  text-align: center;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 20px;
+  color: #666;
+  font-size: 18px;
+}
+
+/* Pływający przycisk zapisywania zmian */
+.floating-save-button {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #2170c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  z-index: 1000;
+}
+
+.floating-save-button:hover {
+  background-color: #1a5a99;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Style dla komponentu grafiku */
+.schedules-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.schedules-container h2 {
+  color: #2170c2;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.schedule-section {
+  margin-bottom: 30px;
+}
+
+.schedule-section h3 {
+  color: #333;
+  margin: 10px 0;
+  padding-left: 10px;
+  border-left: 4px solid #2170c2;
+  font-size: 18px;
+}
+
+/* Stylizacja tabeli grafiku */
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Nagłówki tabeli */
+.schedule-table th {
+  background-color: #2170c2;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid #1e62b0;
+}
+
+/* Komórki tabeli */
+.schedule-table td {
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  text-align: center;
+  vertical-align: middle;
+  background-color: #f5f5f5;
+}
+
+/* Style dla obsadzonych komórek */
+.schedule-cell.filled {
+  background-color: #e3f2fd;
+}
+
+/* Style dla komórek z brakującymi osobami */
+.schedule-cell.shortage, 
+.schedule-cell.filled-shortage {
+  background-color: #ffebee;
+}
+
+/* Styl dla wskaźnika braku osób */
+.missing-indicator {
+  color: #f44336;
+  font-weight: bold;
+  margin-top: 3px;
+}
+
+.agent-name {
+  font-weight: normal;
+  margin-bottom: 2px;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+  .schedule-table, 
+  .availability-table {
+    font-size: 14px;
+  }
+  
+  .schedule-table th, 
+  .schedule-table td,
+  .availability-table th,
+  .availability-table td {
+    padding: 6px 4px;
+  }
+  
+  .nav-left, 
+  .availability-controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .floating-save-button {
+    bottom: 15px;
+    right: 15px;
+    padding: 10px 16px;
+  }
+}
+/* Style dla komponentu wymaganej liczby osób */
+.required-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+}
+
+.required-container h2 {
+  color: #2170c2;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.required-description {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.required-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.required-table th {
+  background-color: #2170c2;
+  color: white;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid #1565c0;
+}
+
+.hour-header {
+  min-width: 100px;
+}
+
+/* Niebieska kolumna godzin - dostosowana do stylu z availability */
+.hour-cell {
+  background-color: #f0f8ff;
+  font-weight: bold;
+  border-right: 2px solid #2170c2;
+  text-align: center;
+  padding: 10px;
+}
+
+.input-cell {
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+}
+
+/* Usunięcie obramowania z pól input */
+.number-input {
+  width: 60px;
+  padding: 8px;
+  text-align: center;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  font-size: 16px;
+  font-weight: 500;
+  /* Opcjonalnie: delikatna linia na dole */
+  border-bottom: 1px solid #ccc;
+}
+
+.number-input:focus {
+  border-bottom: 2px solid #2170c2;
+}
+
+/* Utrzymanie strzałek do zmiany wartości */
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+.required-table tr:nth-child(even) {
+  background-color: #f5f5f5;
+}
+
+.message {
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.message.success {
+  background-color: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  color: #2e7d32;
+}
+
+.message.error {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  color: #c62828;
+}
+
+.buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.save-btn {
+  padding: 10px 20px;
+  background-color: #2170c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.save-btn:hover {
+  background-color: #1a5a99;
+  transform: translateY(-2px);
+}
+
+.save-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.nav-btn {
+  padding: 10px 20px;
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-weight: normal;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.nav-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+}
+
+/* Style dla zarządzania umiejętnościami */
+.skills-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+}
+
+.skills-container h2 {
+  color: #2170c2;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.agent-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.agent-selector-container label {
+  font-weight: bold;
+}
+
+.agent-select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  min-width: 200px;
+}
+
+.skills-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.skill-section {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.skill-section h3 {
+  color: #333;
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 18px;
+}
+
+.skill-info {
+  margin: 15px 0;
+}
+
+.skill-level {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.skill-level strong {
+  font-size: 18px;
+  color: #2170c2;
+}
+
+.max-level {
+  color: #777;
+}
+
+.skill-progress {
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+.skill-progress-bar {
+  height: 100%;
+  background-color: #2170c2;
+  border-radius: 4px;
+}
+
+.feedback-question {
+  margin: 15px 0;
+  font-weight: bold;
+}
+
+.feedback-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.positive-button, .negative-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.positive-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.positive-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-2px);
+}
+
+.negative-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.negative-button:hover {
+  background-color: #d32f2f;
+  transform: translateY(-2px);
+}
+
+.message {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  text-align: center;
+  animation: fadeInOut 3s;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  color: #2e7d32;
+}
+
+.error-message {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  color: #c62828;
+}
+
+.no-agent-selected {
+  text-align: center;
+  padding: 40px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  .agent-selector-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .feedback-buttons {
+    flex-direction: column;
+  }
+}

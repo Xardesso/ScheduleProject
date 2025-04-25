@@ -1,164 +1,177 @@
-import React, { useEffect } from 'react';
-import { days } from '../constants';
+import React, { useState } from 'react';
+import { days, hours } from '../constants';
+import '../styles.css';
 
-export default function AvailabilityPage({ 
-  agents, 
-  selectedAgent, 
-  availability, 
-  onSelectAgent, 
+const AvailabilityPage = ({
+  agents,
+  selectedAgent,
+  availability,
+  onSelectAgent,
   onToggleSlot,
   selectedWeek,
   pendingChanges,
   onSaveChanges
-}) {
-  // Logowanie dla debugowania
-  useEffect(() => {
-    console.log("Dane dostępności w komponencie:", availability);
-  }, [availability]);
+}) => {
+  const [hoveredSlot, setHoveredSlot] = useState(null);
 
-  if (!selectedAgent) return <p>Wybierz agenta z listy</p>;
+  // Mapowanie dat wybranego tygodnia na dni tygodnia
+  const weekDates = {};
+  selectedWeek.forEach((date, index) => {
+    weekDates[index] = date;
+  });
 
+  // Formatowanie nagłówka dnia tygodnia
   const formatDayHeader = (dayIndex) => {
     const date = selectedWeek[dayIndex];
     return (
       <>
         <div>{days[dayIndex]}</div>
-        <div style={{ fontSize: '0.8em', color: '#666' }}>
+        <div className="date-subheader">
           {date.getDate()}.{date.getMonth() + 1}
         </div>
       </>
     );
   };
-  
-  // Funkcja pomocnicza do debugowania - wyświetla pełną datę w konsoli
-  const logDateInfo = (date, slotKey) => {
-    console.log(`Pełna data: ${date.toISOString()}, SlotKey: ${slotKey}`);
+
+  // Sprawdzenie, czy slot jest dostępny
+  const isSlotAvailable = (agentId, day, hour) => {
+    const date = weekDates[day];
+    if (!date) return false;
+
+    const dateStr = date.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const slotKey = `${dateStr}-${hour}`;
+
+    return availability[agentId]?.[slotKey] === true;
   };
-  
+
+  // Sprawdzenie, czy slot jest w oczekujących zmianach
+  const isPendingChange = (agentId, day, hour) => {
+    const date = weekDates[day];
+    if (!date) return false;
+
+    const dateStr = date.toISOString().split('T')[0];
+    const slotKey = `${dateStr}-${hour}`;
+
+    return pendingChanges.some(
+      change => change.agentId === agentId && change.slot === slotKey
+    );
+  };
+
+  // Obsługa kliknięcia w slot dostępności
+  const handleSlotClick = (day, hour) => {
+    if (!selectedAgent) return;
+
+    const date = weekDates[day];
+    if (!date) return;
+
+    const dateStr = date.toISOString().split('T')[0];
+    const slotKey = `${dateStr}-${hour}`;
+    
+    onToggleSlot(selectedAgent.id, slotKey, { date: dateStr, hour });
+  };
+
   return (
-    <div>
-      <div style={{ display: 'flex' }}>
-        <div style={{ width: 200, marginRight: 20 }}>
-          <h3>Agenci</h3>
-          {agents.map(a => (
-            <div
-              key={a.id}
-              onClick={() => onSelectAgent(a)}
-              style={{
-                padding: 10,
-                backgroundColor: selectedAgent?.id === a.id ? '#e6f7ff' : 'white',
-                cursor: 'pointer',
-                border: '1px solid #ddd',
-                marginBottom: 5
-              }}
-            >
-              {a.name}
-            </div>
-          ))}
-          
-          {/* Przycisk do zapisywania zmian */}
-          <button 
-            onClick={onSaveChanges}
-            style={{
-              marginTop: 20,
-              padding: '10px 15px',
-              backgroundColor: pendingChanges.length > 0 ? '#1890ff' : '#d9d9d9',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: pendingChanges.length > 0 ? 'pointer' : 'default',
-              width: '100%'
+    <div className="availability-container">
+      <h2>Dostępność agentów</h2>
+      
+      <div className="availability-controls">
+        <div className="agent-selector">
+          <label htmlFor="agent-select">Wybierz agenta:</label>
+          <select
+            id="agent-select"
+            value={selectedAgent?.id || ''}
+            onChange={(e) => {
+              const agentId = e.target.value;
+              const agent = agents.find((a) => a.id.toString() === agentId);
+              onSelectAgent(agent);
             }}
-            disabled={pendingChanges.length === 0}
+            className="agent-select"
           >
-            Zapisz zmiany {pendingChanges.length > 0 ? `(${pendingChanges.length})` : ''}
-          </button>
+            <option value="">Wybierz pracownika</option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+              </option>
+            ))}
+          </select>
         </div>
-        
-        <div>
-          <h3>Dostępność: {selectedAgent?.name}</h3>
-          <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse' }}>
+      </div>
+      
+      {selectedAgent && (
+        <div className="availability-table-container">
+          <p className="availability-instruction">
+            Kliknij w komórkę, aby zaznaczyć/odznaczyć dostępność agenta w danym terminie
+          </p>
+          
+          <table className="availability-table">
             <thead>
               <tr>
-                <th>Godzina</th>
+                <th className="hour-header">Godz / Dzień</th>
                 {days.map((_, i) => (
-                  <th key={i}>{formatDayHeader(i)}</th>
+                  <th key={i} className="day-header">
+                    {formatDayHeader(i)}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {[...Array(8)].map((_, hourIdx) => {
-                const hour = hourIdx + 9; // 9:00 - 16:00
-                return (
-                  <tr key={hour}>
-                    <td><b>{hour}:00</b></td>
-                    {days.map((_, dayIdx) => {
-                      const date = new Date(selectedWeek[dayIdx]); // Tworzenie nowej instancji daty
-                      const year = date.getFullYear();
-                      const month = String(date.getMonth() + 1).padStart(2, '0');
-                      const day = String(date.getDate()).padStart(2, '0');
-                      const dateStr = `${year}-${month}-${day}`;
-                      const slotKey = `${dateStr}-${hour}`;
-                      
-                      // Sprawdź czy dostępność istnieje dla tego slotu
-                      const isAvailable = availability[selectedAgent.id]?.[slotKey];
-                      
-                      // Sprawdź czy ta komórka ma niezapisane zmiany
-                      const isPending = pendingChanges?.some(
-                        change => change.agentId === selectedAgent.id && change.slot === slotKey
-                      ) || false;
-                      
-                      return (
-                        <td
-                          key={dayIdx}
-                          onClick={() => {
-                            logDateInfo(date, slotKey); // Debugging
-                            // Przekaż dokładne dane o dacie i godzinie
-                            onToggleSlot(selectedAgent.id, slotKey, {
-                              date: dateStr,
-                              hour: hour,
-                              dayIndex: dayIdx
-                            });
-                          }}
-                          style={{
-                            backgroundColor: isAvailable ? (isPending ? '#ffc069' : '#d4ffcc') : (isPending ? '#ffccc7' : '#fff'),
-                            cursor: 'pointer',
-                            width: 60,
-                            textAlign: 'center',
-                            border: isPending ? '2px solid #722ed1' : '1px solid #ddd'
-                          }}
-                        >
-                          {isAvailable ? '✓' : '—'}
-                          <div style={{ fontSize: '0.7em', color: '#666' }}>
-                            {day}/{month}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+              {hours.map((hour) => (
+                <tr key={hour}>
+                  <td className="hour-cell">{hour}:00</td>
+                  {days.map((_, dayIndex) => {
+                    const isAvailable = isSlotAvailable(selectedAgent.id, dayIndex, hour);
+                    const isPending = isPendingChange(selectedAgent.id, dayIndex, hour);
+                    
+                    let cellClass = "availability-cell";
+                    if (isAvailable) cellClass += " available";
+                    if (isPending) cellClass += " pending";
+                    
+                    return (
+                      <td
+                        key={dayIndex}
+                        className={cellClass}
+                        onClick={() => handleSlotClick(dayIndex, hour)}
+                        onMouseEnter={() => setHoveredSlot(`${dayIndex}-${hour}`)}
+                        onMouseLeave={() => setHoveredSlot(null)}
+                      >
+                        {isAvailable ? (
+                          <span className="availability-check">✓</span>
+                        ) : (
+                          <span className="availability-cross">✗</span>
+                        )}
+                        {isPending && <div className="pending-indicator">*</div>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
+          
+          {pendingChanges.length > 0 && (
+            <div className="pending-info">
+              * Zmiany oczekujące na zapisanie
+            </div>
+          )}
         </div>
-      </div>
+      )}
       
-      {/* Debug info - pokaż oczekujące zmiany */}
-      {pendingChanges && pendingChanges.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <h4>Oczekujące zmiany ({pendingChanges.length}):</h4>
-          <ul>
-            {pendingChanges.map((change, idx) => (
-              <li key={idx}>
-                Agent: {change.agentId}, 
-                Data: {change.date}, 
-                Godzina: {change.hour}, 
-                Slot: {change.slot}
-              </li>
-            ))}
-          </ul>
+      {!selectedAgent && (
+        <div className="no-agent-selected">
+          Wybierz agenta, aby zobaczyć i edytować jego dostępność
         </div>
+      )}
+
+      {pendingChanges.length > 0 && (
+        <button 
+          onClick={onSaveChanges}
+          className="floating-save-button"
+        >
+          Zapisz zmiany ({pendingChanges.length})
+        </button>
       )}
     </div>
   );
-}
+};
+
+export default AvailabilityPage;

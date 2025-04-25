@@ -1,4 +1,3 @@
-// Pobieranie dostępności agentów
 export const fetchAvailability = async (agentId = null) => {
     try {
       let url = 'http://127.0.0.1:8000/api/availability';
@@ -22,7 +21,6 @@ export const fetchAvailability = async (agentId = null) => {
     }
   };
   
-  // Zapisanie dostępności agenta
   export const saveAvailability = async (agentId, date, hour, isAvailable) => {
     try {
       console.log(`Zapisuję: Agent ${agentId}, data ${date}, godzina ${hour}, dostępny: ${isAvailable}`);
@@ -44,7 +42,6 @@ export const fetchAvailability = async (agentId = null) => {
     }
   };
   
-  // Usunięcie dostępności agenta
   export const deleteAvailability = async (agentId, date, hour) => {
     try {
       console.log(`Usuwam: Agent ${agentId}, data ${date}, godzina ${hour}`);

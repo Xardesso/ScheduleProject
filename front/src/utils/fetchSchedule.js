@@ -1,7 +1,6 @@
 // utils/fetchSchedule.js
 export const fetchSchedule = async (agents, availability, areas, selectedWeek = null) => {
     try {
-      // Dodaj informacje o dostępności agentów
       console.log("Dane dostępności agentów:", availability);
       const availabilityEntries = Object.entries(availability || {});
       const availabilityCount = availabilityEntries.reduce((count, [agentId, slots]) => {
@@ -9,7 +8,6 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
       }, 0);
       console.log(`Liczba dostępnych slotów: ${availabilityCount}`);
       
-      // Pobierz obszary z backendu, jeśli nie są dostarczone
       if (!areas || areas.length === 0) {
         console.log("Pobieranie obszarów z API...");
         try {
@@ -19,7 +17,6 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
             console.log("Pobrane obszary z API:", areas);
           } else {
             console.error("Nie udało się pobrać obszarów z API");
-            // Zdefiniuj domyślne obszary na podstawie tabeli z bazy danych
             areas = [
               { id: 1, name: "Obsługa klienta" },
               { id: 2, name: "Pozyskiwanie klienta" },
@@ -31,7 +28,6 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
         }
       }
   
-      // Pobierz umiejętności dla każdego agenta
       console.log("Pobieranie umiejętności agentów...");
       const skillsResponse = await fetch('http://127.0.0.1:8000/api/skills');
       
@@ -42,17 +38,14 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
       const skills = await skillsResponse.json();
       console.log("Pobrane umiejętności:", skills);
       
-      // Przygotuj agentów z umiejętnościami i upewnij się, że ID są liczbami
       const agentsWithSkills = agents.map(agent => {
-        // Upewnij się, że ID agenta jest liczbą
         const agentId = parseInt(agent.id, 10);
         
-        // Znajdź umiejętności dla tego agenta
         const agentSkills = skills.filter(skill => parseInt(skill.agentId, 10) === agentId) || [];
         
         return {
           ...agent,
-          id: agentId, // Upewnij się, że ID jest liczbą
+          id: agentId, 
           skills: agentSkills.map(skill => ({
             ...skill,
             agentId: parseInt(skill.agentId, 10),
@@ -62,9 +55,7 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
         };
       });
       
-      // Upewnij się, że ID obszarów są liczbami
       const areasWithNumberIds = areas.map((area, index) => {
-        // Jeśli ID jest NaN, użyj indeksu + 1
         const areaId = isNaN(parseInt(area.id, 10)) ? (index + 1) : parseInt(area.id, 10);
         return {
           ...area,
@@ -75,7 +66,6 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
       console.log("Agenci z umiejętnościami:", agentsWithSkills);
       console.log("Obszary z numerycznymi ID:", areasWithNumberIds);
       
-      // Dodaj informacje o wybranym tygodniu, jeśli jest dostępny
       let dateRange = null;
       if (selectedWeek && Array.isArray(selectedWeek) && selectedWeek.length > 0) {
         const startDate = selectedWeek[0].toISOString().split('T')[0]; // Format YYYY-MM-DD
@@ -84,17 +74,15 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
         console.log(`Pobieranie harmonogramu dla tygodnia: ${startDate} - ${endDate}`);
       }
       
-      // Przygotowanie danych do wysłania
       const requestData = {
         agents: agentsWithSkills,
         availability: availability || {},
         areas: areasWithNumberIds,
-        dateRange: dateRange // Dodaj datę tygodnia do zapytania
+        dateRange: dateRange 
       };
       
       console.log("Wysyłanie danych do generowania grafiku:", requestData);
       
-      // Wywołaj API do generowania harmonogramu
       const response = await fetch('http://127.0.0.1:8000/api/schedule', {
         method: 'POST',
         headers: { 
@@ -110,11 +98,9 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
         throw new Error(`Błąd HTTP: ${response.status} - ${response.statusText}`);
       }
       
-      // Pobierz dane z odpowiedzi
       const data = await response.json();
       console.log("Otrzymany harmonogram:", data);
       
-      // Analiza harmonogramu - sprawdź czy jest pusty
       const filledSlots = countFilledSlots(data);
       console.log(`Wypełnione sloty: ${filledSlots.filled} z ${filledSlots.total} (${(filledSlots.filled / filledSlots.total * 100).toFixed(2)}%)`);
       
@@ -128,7 +114,6 @@ export const fetchSchedule = async (agents, availability, areas, selectedWeek = 
     }
   };
 
-// Funkcja pomocnicza do liczenia wypełnionych slotów
 function countFilledSlots(schedule) {
   let filled = 0;
   let total = 0;
@@ -142,7 +127,6 @@ function countFilledSlots(schedule) {
     for (let hour = 9; hour <= 16; hour++) {
       if (!schedule[day][hour]) continue;
       
-      // Iteruj po obszarach - używamy for zamiast forEach, aby uniknąć błędu ESLint
       const areaKeys = Object.keys(schedule[day][hour]);
       for (let i = 0; i < areaKeys.length; i++) {
         const areaId = areaKeys[i];
@@ -157,7 +141,6 @@ function countFilledSlots(schedule) {
   return { filled, total };
 }
 
-// Funkcja generująca pusty harmonogram
 function generateEmptySchedule() {
   const schedule = [];
   for (let day = 0; day < 7; day++) {
@@ -169,5 +152,4 @@ function generateEmptySchedule() {
   return schedule;
 }
 
-// Funkcja symulująca dane harmonogramu dla testów interfejsu
 

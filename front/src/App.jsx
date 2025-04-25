@@ -7,24 +7,22 @@ import { fetchSchedule } from './utils/fetchSchedule';
 import { saveAvailability, fetchAvailability, deleteAvailability } from './utils/fetchAvailability';
 import RequiredAvailabilityPage from './components/RequiredAvailabilityPage';
 import SkillManagementPage from './components/SkillManagementPage';
+import './styles.css'; 
 
 export default function App() {
-  const [page, setPage] = useState(1); // 1=Dostępność, 2=Grafik, 3=Wymagana liczba osób, 4=Zarządzanie umiejętnościami
+  const [page, setPage] = useState(1); 
   const [selectedAgent, setAgent] = useState(null);
   const [availability, setAvailability] = useState({});
   const [schedule, setSchedule] = useState(null);
   const [agents, setAgents] = useState([]);
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekDates());
-  // Stan do śledzenia niezapisanych zmian
   const [pendingChanges, setPendingChanges] = useState([]);
-  // Stan do śledzenia ładowania
   const [isLoading, setIsLoading] = useState(false);
 
-  // Funkcja zwracająca daty aktualnego tygodnia
   function getCurrentWeekDates() {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 = niedziela, 1 = poniedziałek, itd.
-    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Dostosuj dla poniedziałku jako początku tygodnia
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
     
     const monday = new Date(now.setDate(diff));
     const dates = [];
@@ -38,15 +36,12 @@ export default function App() {
     return dates;
   }
 
-  // Funkcja do ładowania zapisanych dostępności
   const loadAvailability = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Przekaż selectedWeek do funkcji fetchAvailability
       const availabilityData = await fetchAvailability(null, selectedWeek);
       
       if (availabilityData && Array.isArray(availabilityData)) {
-        // Przekształć dane z API na format używany przez komponent
         const formattedData = {};
         
         availabilityData.forEach(item => {
@@ -55,7 +50,6 @@ export default function App() {
             formattedData[agentId] = {};
           }
           
-          // Utwórz klucz slotu w formacie YYYY-MM-DD-H
           const slotKey = `${date}-${hour}`;
           formattedData[agentId][slotKey] = isAvailable;
         });
@@ -72,14 +66,11 @@ export default function App() {
     }
   }, [selectedWeek]);
 
-  // Efekt do ładowania dostępności
   useEffect(() => {
     loadAvailability();
   }, [loadAvailability]);
 
-  // Efekt do aktualizacji harmonogramu przy zmianie tygodnia
   useEffect(() => {
-    // Pobierz nowy harmonogram tylko jeśli jesteśmy na stronie harmonogramu
     if (page === 2 && agents.length > 0) {
       const updateScheduleForWeek = async () => {
         setIsLoading(true);
@@ -97,58 +88,46 @@ export default function App() {
     }
   }, [selectedWeek, page, agents, availability]);
 
-  // Funkcja do przełączania dostępności agentów
   const toggleSlot = (agentId, slot, slotInfo) => {
     console.log(`Toggle slot: Agent ${agentId}, Slot ${slot}`);
     
-    // Sprawdź, czy slot jest w pendingChanges (oczekujące zmiany)
     const isPending = pendingChanges.some(
       change => change.agentId === agentId && change.slot === slot
     );
     
-    // Aktualna wartość w UI
     const isCurrentlyChecked = availability[agentId]?.[slot] || false;
     
-    // Aktualizacja lokalnego stanu UI
     setAvailability(prev => ({
       ...prev,
       [agentId]: { ...(prev[agentId] || {}), [slot]: !isCurrentlyChecked }
     }));
     
-    // Wyodrębnij datę i godzinę
     const { date, hour } = slotInfo || {};
     const dateStr = date || slot.split('-').slice(0, 3).join('-');
     const hourValue = hour || parseInt(slot.split('-')[3]);
     
     if (isCurrentlyChecked && !isPending) {
-      // Jeśli slot jest obecnie zaznaczony w bazie (nie jest w pendingChanges)
-      // usuń z bazy danych
       deleteAvailability(agentId, dateStr, hourValue)
         .then(() => {
           console.log(`Usunięto dostępność: Agent ${agentId}, data ${dateStr}, godzina ${hourValue}`);
         })
         .catch(error => {
           console.error('Błąd podczas usuwania dostępności:', error);
-          // Przywróć poprzedni stan w przypadku błędu
           setAvailability(prev => ({
             ...prev,
             [agentId]: { ...(prev[agentId] || {}), [slot]: true }
           }));
         });
     } else {
-      // Zarządzanie listą oczekujących zmian
       setPendingChanges(prev => {
-        // Sprawdź, czy zmiana już istnieje w pendingChanges
         const existingIndex = prev.findIndex(
           change => change.agentId === agentId && change.slot === slot
         );
         
-        // Jeśli zmiana już istnieje, usuń ją (toggle)
         if (existingIndex >= 0) {
           return prev.filter((_, index) => index !== existingIndex);
         }
         
-        // W przeciwnym razie, dodaj nową zmianę
         return [...prev, { 
           agentId, 
           date: dateStr,
@@ -160,7 +139,6 @@ export default function App() {
     }
   };
 
-  // Funkcja do zapisywania wszystkich zmian naraz
   const saveAllChanges = async () => {
     if (pendingChanges.length === 0) {
       alert('Brak zmian do zapisania');
@@ -170,7 +148,6 @@ export default function App() {
     try {
       console.log("Zapisywane zmiany:", pendingChanges);
       
-      // Zapisuj każdą zmianę z jej rzeczywistymi wartościami
       const savePromises = pendingChanges.map(change => {
         return saveAvailability(
           change.agentId, 
@@ -183,10 +160,8 @@ export default function App() {
       const results = await Promise.all(savePromises);
       console.log("Wyniki zapisywania:", results);
       
-      // Po zapisaniu, odśwież dane dostępności
       await loadAvailability();
       
-      // Wyczyść listę oczekujących zmian
       setPendingChanges([]);
       
       alert('Wszystkie zmiany zostały zapisane!');
@@ -196,9 +171,7 @@ export default function App() {
     }
   };
   
-  // Funkcja do przejścia do widoku grafiku
   const goToSchedule = async () => {
-    // Jeśli są niezapisane zmiany, zapytaj użytkownika co chce zrobić
     if (pendingChanges.length > 0) {
       const saveFirst = window.confirm('Masz niezapisane zmiany. Czy chcesz je zapisać przed przejściem do grafiku?');
       if (saveFirst) {
@@ -219,7 +192,6 @@ export default function App() {
     }
   };
 
-  // Efekt do pobierania agentów przy zamontowaniu komponentu
   useEffect(() => {
     const loadAgents = async () => {
       try {
@@ -237,7 +209,6 @@ export default function App() {
     loadAgents();
   }, [selectedAgent]);
 
-  // Funkcja do zmiany tygodnia
   const changeWeek = (direction) => {
     console.log(`Zmiana tygodnia: ${direction > 0 ? 'następny' : 'poprzedni'}`);
     const newDates = selectedWeek.map(date => {
@@ -248,7 +219,6 @@ export default function App() {
     setSelectedWeek(newDates);
   };
 
-  // Formatowanie daty do wyświetlenia
   const formatDate = (date) => {
     return date.toLocaleDateString('pl-PL', { 
       month: 'short',
@@ -257,106 +227,84 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      {/* Komponent wyboru tygodnia */}
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => changeWeek(-1)}>❮ Poprzedni tydzień</button>
-        <div style={{ margin: '0 15px' }}>
-          <strong>
-            {formatDate(selectedWeek[0])} - {formatDate(selectedWeek[6])}
-          </strong>
+    <div className="app-container">
+      <div className="navbar">
+        <div className="nav-left">
+          <button 
+            onClick={() => setPage(1)} 
+            className={page === 1 ? 'active' : ''}
+            disabled={isLoading}
+          >
+            Dostępność agentów
+          </button>
+          
+          <button 
+            onClick={() => goToSchedule()} 
+            className={page === 2 ? 'active' : ''}
+            disabled={isLoading}
+          >
+            Grafik pracy
+          </button>
+          
+          <button 
+            onClick={() => setPage(3)} 
+            className={page === 3 ? 'active' : ''}
+            disabled={isLoading}
+          >
+            Wymagana liczba osób
+          </button>
+          
+          <button 
+            onClick={() => setPage(4)} 
+            className={page === 4 ? 'active' : ''}
+            disabled={isLoading}
+          >
+            Zarządzanie umiejętnościami
+          </button>
         </div>
-        <button onClick={() => changeWeek(1)}>Następny tydzień ❯</button>
+        
+        <div className="nav-right">
+          <button onClick={() => changeWeek(-1)} className="week-btn">❮ Poprzedni tydzień</button>
+          <div className="week-display">
+            <strong>
+              {formatDate(selectedWeek[0])} - {formatDate(selectedWeek[6])}
+            </strong>
+          </div>
+          <button onClick={() => changeWeek(1)} className="week-btn">Następny tydzień ❯</button>
+        </div>
       </div>
 
-      {/* Przyciski nawigacyjne między stronami */}
-      <div style={{ marginBottom: 20, display: 'flex', gap: '10px' }}>
-        <button 
-          onClick={() => setPage(1)} 
-          disabled={page === 1 || isLoading}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: page === 1 ? '#e0e0e0' : '#f5f5f5',
-            fontWeight: page === 1 ? 'bold' : 'normal',
-            border: '1px solid #ddd',
-            borderRadius: '4px'
-          }}
-        >
-          Dostępność agentów
-        </button>
-        
-        <button 
-          onClick={() => goToSchedule()} 
-          disabled={page === 2 || isLoading}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: page === 2 ? '#e0e0e0' : '#f5f5f5',
-            fontWeight: page === 2 ? 'bold' : 'normal',
-            border: '1px solid #ddd',
-            borderRadius: '4px'
-          }}
-        >
-          Grafik pracy
-        </button>
-        
-        <button 
-          onClick={() => setPage(3)} 
-          disabled={page === 3 || isLoading}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: page === 3 ? '#e0e0e0' : '#f5f5f5',
-            fontWeight: page === 3 ? 'bold' : 'normal',
-            border: '1px solid #ddd',
-            borderRadius: '4px'
-          }}
-        >
-          Wymagana liczba osób
-        </button>
-        
-        <button 
-          onClick={() => setPage(4)} 
-          disabled={page === 4 || isLoading}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: page === 4 ? '#e0e0e0' : '#f5f5f5',
-            fontWeight: page === 4 ? 'bold' : 'normal',
-            border: '1px solid #ddd',
-            borderRadius: '4px'
-          }}
-        >
-          Zarządzanie umiejętnościami
-        </button>
+      <div className="content">
+        {agents.length === 0 ? (
+          <div>Brak danych agentów. Dodaj agentów w systemie.</div>
+        ) : isLoading ? (
+          <div>Ładowanie danych...</div>
+        ) : page === 1 ? (
+          <AvailabilityPage
+            agents={agents}
+            selectedAgent={selectedAgent}
+            availability={availability}
+            onSelectAgent={setAgent}
+            onToggleSlot={toggleSlot}
+            selectedWeek={selectedWeek}
+            pendingChanges={pendingChanges}
+            onSaveChanges={saveAllChanges}
+          />
+        ) : page === 2 ? (
+          <SchedulePage
+            agents={agents}
+            schedule={schedule}
+            areas={areas}
+            selectedWeek={selectedWeek}
+          />
+        ) : page === 3 ? (
+          <RequiredAvailabilityPage
+            onNavigateToAvailability={() => setPage(1)}
+          />
+        ) : page === 4 ? (
+          <SkillManagementPage />
+        ) : null}
       </div>
-
-      {agents.length === 0 ? (
-        <div>Brak danych agentów. Dodaj agentów w systemie.</div>
-      ) : isLoading ? (
-        <div>Ładowanie danych...</div>
-      ) : page === 1 ? (
-        <AvailabilityPage
-          agents={agents}
-          selectedAgent={selectedAgent}
-          availability={availability}
-          onSelectAgent={setAgent}
-          onToggleSlot={toggleSlot}
-          selectedWeek={selectedWeek}
-          pendingChanges={pendingChanges}
-          onSaveChanges={saveAllChanges}
-        />
-      ) : page === 2 ? (
-        <SchedulePage
-          agents={agents}
-          schedule={schedule}
-          areas={areas}
-          selectedWeek={selectedWeek}
-        />
-      ) : page === 3 ? (
-        <RequiredAvailabilityPage
-          onNavigateToAvailability={() => setPage(1)}
-        />
-      ) : page === 4 ? (
-        <SkillManagementPage />
-      ) : null}
     </div>
   );
 }

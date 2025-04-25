@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import '../SkillManagementPage.module.css';
+import React, { useState, useEffect, useCallback } from 'react';
+import '../styles.css';
 
 const SkillManagementPage = () => {
   const [agents, setAgents] = useState([]);
@@ -8,6 +8,7 @@ const SkillManagementPage = () => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [showMessage, setShowMessage] = useState(false);
 
   // Pobierz listę agentów, obszarów i umiejętności
   useEffect(() => {
@@ -35,7 +36,7 @@ const SkillManagementPage = () => {
         }
       } catch (error) {
         console.error('Błąd podczas pobierania danych:', error);
-        setMessage('Wystąpił błąd podczas ładowania danych');
+        showFeedbackMessage('Wystąpił błąd podczas ładowania danych', true);
       } finally {
         setIsLoading(false);
       }
@@ -45,23 +46,30 @@ const SkillManagementPage = () => {
   }, []);
 
   // Znajdź bieżące umiejętności agenta
-  const getAgentSkill = (agentId, areaId) => {
+  const getAgentSkill = useCallback((agentId, areaId) => {
     if (!agentId || !areaId) return null;
     return skills.find(skill => 
       parseInt(skill.agentId) === parseInt(agentId) && 
       parseInt(skill.areaId) === parseInt(areaId)
     );
-  };
+  }, [skills]);
 
   // Obsługa zmiany agenta
-  const handleAgentChange = (e) => {
+  const handleAgentChange = useCallback((e) => {
     setSelectedAgent(e.target.value);
-  };
+  }, []);
+
+  // Wyświetlanie komunikatu zwrotnego
+  const showFeedbackMessage = useCallback((text, isError = false) => {
+    setMessage(text);
+    setShowMessage(true);
+    setTimeout(() => setShowMessage(false), 3000);
+  }, []);
 
   // Obsługa aktualizacji umiejętności
-  const handleSkillUpdate = async (areaId, isPositive) => {
+  const handleSkillUpdate = useCallback(async (areaId, isPositive) => {
     if (!selectedAgent || !areaId) {
-      setMessage('Wybierz agenta i obszar');
+      showFeedbackMessage('Wybierz agenta i obszar', true);
       return;
     }
     
@@ -105,33 +113,36 @@ const SkillManagementPage = () => {
       setSkills(skillsData);
       
       // Pokaż komunikat sukcesu
-      setMessage(`Umiejętność agenta została ${isPositive ? 'zwiększona' : 'zmniejszona'}`);
-      
-      // Wyczyść komunikat po 3 sekundach
-      setTimeout(() => setMessage(''), 3000);
+      showFeedbackMessage(`Umiejętność agenta została ${isPositive ? 'zwiększona' : 'zmniejszona'}`);
     } catch (error) {
       console.error('Błąd podczas aktualizacji umiejętności:', error);
-      setMessage('Wystąpił błąd podczas aktualizacji umiejętności');
+      showFeedbackMessage('Wystąpił błąd podczas aktualizacji umiejętności', true);
     }
-  };
+  }, [selectedAgent, getAgentSkill, showFeedbackMessage]);
 
-  // Znajdź nazwę obszaru po ID
-  const getAreaName = (areaId) => {
-    const area = areas.find(a => parseInt(a.id) === parseInt(areaId));
-    return area ? area.name : 'Nieznany obszar';
-  };
-
-  // Tworzenie komponentu oceny dla każdego obszaru
-  const renderFeedbackSection = (areaId, areaName, questionText, positiveLabel, negativeLabel) => {
+  // Funkcja renderująca sekcję umiejętności
+  const renderSkillSection = useCallback((areaId, areaName, questionText, positiveLabel, negativeLabel) => {
     const skill = getAgentSkill(selectedAgent, areaId);
     const efficiency = skill ? parseFloat(skill.efficiency).toFixed(1) : "1.0";
     
     return (
-      <div key={areaId} className="feedback-section">
+      <div key={areaId} className="skill-section">
         <h3>{areaName}</h3>
-        <p>Obecny poziom: <strong>{efficiency}</strong> / 10</p>
-        <p>{questionText}</p>
-        <div className="buttons-container">
+        <div className="skill-info">
+          <div className="skill-level">
+            Obecny poziom: <strong>{efficiency}</strong> <span className="max-level">/ 10</span>
+          </div>
+          <div className="skill-progress">
+            <div 
+              className="skill-progress-bar" 
+              style={{width: `${(parseFloat(efficiency)/10)*100}%`}}
+            ></div>
+          </div>
+        </div>
+        
+        <div className="feedback-question">{questionText}</div>
+        
+        <div className="feedback-buttons">
           <button 
             onClick={() => handleSkillUpdate(areaId, true)}
             className="positive-button"
@@ -147,17 +158,17 @@ const SkillManagementPage = () => {
         </div>
       </div>
     );
-  };
+  }, [getAgentSkill, handleSkillUpdate, selectedAgent]);
 
   if (isLoading) {
-    return <div>Ładowanie danych...</div>;
+    return <div className="loading">Ładowanie danych...</div>;
   }
 
   return (
-    <div className="skill-management-container">
+    <div className="skills-container">
       <h2>Zarządzanie umiejętnościami pracowników</h2>
       
-      <div className="selection-container">
+      <div className="agent-selector-container">
         <label htmlFor="agent-select">Wybierz pracownika:</label>
         <select 
           id="agent-select" 
@@ -172,16 +183,16 @@ const SkillManagementPage = () => {
         </select>
       </div>
       
-      {message && (
-        <div className={`message ${message.includes('błąd') ? 'error' : 'success'}`}>
+      {showMessage && (
+        <div className={`message ${message.includes('błąd') ? 'error-message' : 'success-message'}`}>
           {message}
         </div>
       )}
       
-      {selectedAgent && (
-        <div className="feedback-container">
+      {selectedAgent ? (
+        <div className="skills-content">
           {/* Obsługa klienta */}
-          {renderFeedbackSection(
+          {renderSkillSection(
             1, 
             "Obsługa klienta", 
             "Czy klient wystawił pozytywną recenzję?", 
@@ -190,7 +201,7 @@ const SkillManagementPage = () => {
           )}
           
           {/* Pozyskiwanie klienta */}
-          {renderFeedbackSection(
+          {renderSkillSection(
             2, 
             "Pozyskiwanie klienta", 
             "Czy klient dokonał zakupu?", 
@@ -199,13 +210,17 @@ const SkillManagementPage = () => {
           )}
           
           {/* Wsparcie techniczne */}
-          {renderFeedbackSection(
+          {renderSkillSection(
             3, 
             "Wsparcie techniczne", 
             "Czy problem został rozwiązany?", 
             "Tak, rozwiązany", 
             "Nie, nierozwiązany"
           )}
+        </div>
+      ) : (
+        <div className="no-agent-selected">
+          Wybierz agenta, aby zarządzać jego umiejętnościami
         </div>
       )}
     </div>

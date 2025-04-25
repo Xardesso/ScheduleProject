@@ -1,7 +1,5 @@
-// utils/fetchRequiredAvailability.js
 
 /**
- * Pobiera dane o wymaganej liczbie osób z API
  * @returns {Promise<Array>} Promise zwracający tablicę z danymi o wymaganej liczbie osób
  */
 export const fetchRequiredAvailability = async () => {
@@ -13,7 +11,6 @@ export const fetchRequiredAvailability = async () => {
       console.log("Status odpowiedzi:", response.status);
       
       if (!response.ok) {
-        // Próba odczytania szczegółowego komunikatu błędu
         let errorText = '';
         try {
           errorText = await response.text();
@@ -28,17 +25,14 @@ export const fetchRequiredAvailability = async () => {
       const data = await response.json();
       console.log("Pobrane dane wymaganej liczby osób:", data);
       
-      // Obsługa pustego wyniku (tabela jest pusta)
       if (Array.isArray(data) && data.length === 0) {
         console.log("API zwróciło pustą tablicę - brak danych w tabeli requiredavailability");
-        // Zwróć domyślne wartości dla godzin 9-16
         return generateDefaultData();
       }
       
       return data;
     } catch (error) {
       console.error('Błąd podczas pobierania wymaganej liczby osób:', error);
-      // W przypadku błędu zwróć domyślne dane, aby nie zepsuć interfejsu
       return generateDefaultData();
     }
   };
@@ -61,7 +55,6 @@ export const fetchRequiredAvailability = async () => {
       });
       
       if (!response.ok) {
-        // Próba odczytania szczegółowego komunikatu błędu
         let errorText = '';
         try {
           errorText = await response.text();
@@ -83,8 +76,7 @@ export const fetchRequiredAvailability = async () => {
   };
 
 /**
- * Generuje domyślne dane dla wszystkich godzin
- * @returns {Array} Tablica z domyślnymi danymi
+ * @returns {Array} 
  */
 function generateDefaultData() {
   const defaultData = [];

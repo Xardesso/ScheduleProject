@@ -89,7 +89,6 @@ class SchedulerService
             // 3. Przygotuj macierz dostępności
             $availMatrix = [];
             
-            // WAŻNA ZMIANA: Używaj daty z parametru dateRange zamiast "monday this week"
             if ($dateRange && isset($dateRange['startDate'])) {
                 $startDate = new \DateTime($dateRange['startDate']);
             } else {
@@ -98,28 +97,19 @@ class SchedulerService
             
             $this->log('Data początkowa tygodnia', ['startDate' => $startDate->format('Y-m-d')]);
             
-            // Logowanie formatu dostępności
-            $this->log('Format dostępności', [
-                'przykład_klucza' => array_keys($availability)[0] ?? 'brak',
-                'przykład_wartości' => !empty($availability) ? array_slice($availability, 0, 1) : []
-            ]);
-            
             foreach ($availability as $agentId => $slots) {
-                // Sprawdź format danych (może być różny)
                 if (is_array($slots)) {
                     foreach ($slots as $slotKey => $isAvailable) {
                         if (!$isAvailable) continue;
                         
-                        // Spróbuj rozpoznać format daty
                         $parts = explode('-', $slotKey);
                         if (count($parts) >= 4) {
-                            // Format: "2025-04-22-9"
                             $dateStr = $parts[0] . '-' . $parts[1] . '-' . $parts[2];
                             $hour = (int)$parts[3];
                             
                             $slotDate = new \DateTime($dateStr);
                             
-                            // WAŻNA ZMIANA: Oblicz dzień tygodnia (0-6) z daty, nie z różnicy dni
+                            // Oblicz dzień tygodnia (0-6)
                             $day = (int)$slotDate->format('N') - 1; // 0 = poniedziałek, 6 = niedziela
                             
                             // Sprawdź, czy data mieści się w wybranym tygodniu
@@ -173,7 +163,7 @@ class SchedulerService
                         
                         if (empty($availableAgents)) continue;
                         
-                        // Pobierz liczbę wymaganych osób dla tego obszaru i godziny
+                        // Pobierz wymaganą liczbę osób dla danego obszaru i godziny
                         $requiredPeople = $this->getRequiredPeopleCount($areaId, $hour);
                         
                         // Sortuj dostępnych agentów według efektywności dla danego obszaru
@@ -187,9 +177,8 @@ class SchedulerService
                         arsort($candidates);
                         
                         $this->log("Wymagana liczba osób dla obszaru $areaId o godzinie $hour: $requiredPeople");
-                        $this->log("Kandydaci posortowani według efektywności:", $candidates);
                         
-                        // Przydziel tylu agentów, ilu jest wymaganych (lub mniej, jeśli brakuje dostępnych)
+                        // Przydziel tylu agentów, ilu jest wymaganych (lub ilu jest dostępnych)
                         $assignedCount = 0;
                         $assignedAgents = [];
                         
@@ -241,20 +230,19 @@ class SchedulerService
                 ->findOneBy(['hour' => $hour]);
             
             if (!$requiredAvailability) {
-                return 1; // Domyślnie 1 osoba jeśli nie znaleziono rekordu
+                return 1; // Domyślnie 1 osoba
             }
             
             // Pobierz wartość dla odpowiedniego obszaru
             $methodName = "getReqpeople{$areaId}";
             if (method_exists($requiredAvailability, $methodName)) {
-                $value = $requiredAvailability->$methodName();
-                return $value !== null ? max(1, $value) : 1; // Min. 1 osoba
+                return $requiredAvailability->$methodName() ?: 1;
             }
             
             return 1; // Domyślnie 1 osoba
         } catch (\Exception $e) {
             $this->log('Błąd podczas pobierania wymaganej liczby osób: ' . $e->getMessage(), [], 'error');
-            return 1; // Domyślnie 1 osoba w przypadku błędu
+            return 1;
         }
     }
     

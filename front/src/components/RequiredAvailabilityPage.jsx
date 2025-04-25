@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import '../styles.css';
 
 const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
   const [requiredPeople, setRequiredPeople] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const initialRenderRef = useRef(true);
 
-  // Użyj useMemo do zapamiętania tablic hours i positions
-  const hours = useMemo(() => [9, 10, 11, 12, 13, 14, 15, 16], []);
-  
-  const positions = useMemo(() => [
+  const hours = [9, 10, 11, 12, 13, 14, 15, 16];
+  const positions = [
     { id: 1, name: "Obsługa klienta" },
     { id: 2, name: "Pozyskiwanie klienta" },
     { id: 3, name: "Wsparcie techniczne" }
-  ], []);
+  ];
 
-  // Definiujemy fetchRequiredAvailability jako useCallback, aby uniknąć problemów z ESLint
+  // Używamy useCallback, aby funkcja fetchRequiredAvailability nie była tworzona na nowo przy każdym renderze
   const fetchRequiredAvailability = useCallback(async () => {
+    if (!initialRenderRef.current) return;
+    
     setIsLoading(true);
     try {
       const response = await fetch('http://127.0.0.1:8000/api/required-availability');
@@ -34,52 +36,49 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
       hours.forEach(hour => {
         requiredByHour[hour] = {};
         positions.forEach(position => {
-          requiredByHour[hour][position.id] = 0;
+          requiredByHour[hour][position.id] = 1; // Minimalna wartość to 1
         });
       });
       
       // Wypełnij danymi z API
       data.forEach(item => {
         const hour = item.hour;
-        // Obsługa danych z API - zakładamy, że API zwraca dla każdego rekordu:
-        // { id, hour, reqpeople_1, reqpeople_2, reqpeople_3 }
         positions.forEach(position => {
-          // Pobierz wartość dla danej pozycji
           const fieldName = `reqpeople_${position.id}`;
           if (item[fieldName] !== undefined) {
-            requiredByHour[hour][position.id] = item[fieldName];
+            requiredByHour[hour][position.id] = Math.max(1, item[fieldName]); // Minimum 1
           }
         });
       });
       
       setRequiredPeople(requiredByHour);
+      
     } catch (error) {
       console.error('Błąd podczas pobierania danych:', error);
-      setMessage('Wystąpił błąd podczas pobierania danych');
       
-      // Inicjalizuj pustymi wartościami w przypadku błędu
-      const emptyValues = {};
+      // Inicjalizuj wartościami domyślnymi w przypadku błędu
+      const defaultValues = {};
       hours.forEach(hour => {
-        emptyValues[hour] = {};
+        defaultValues[hour] = {};
         positions.forEach(position => {
-          emptyValues[hour][position.id] = 0;
+          defaultValues[hour][position.id] = 1; // Minimum 1
         });
       });
       
-      setRequiredPeople(emptyValues);
+      setRequiredPeople(defaultValues);
     } finally {
       setIsLoading(false);
+      initialRenderRef.current = false;
     }
-  }, [hours, positions]);  // Dodaj hours i positions jako zależności
+  }, [hours, positions]);
 
-  // Pobierz istniejące dane przy ładowaniu komponentu
   useEffect(() => {
     fetchRequiredAvailability();
   }, [fetchRequiredAvailability]);
 
-  const handleInputChange = (hour, positionId, value) => {
-    // Konwertuj wartość wejściową na liczbę całkowitą
-    const numValue = parseInt(value, 10) || 0;
+  const handleInputChange = useCallback((hour, positionId, value) => {
+    // Konwertuj wartość wejściową na liczbę całkowitą i upewnij się, że jest >= 1
+    const numValue = Math.max(1, parseInt(value, 10) || 1);
     
     setRequiredPeople(prev => ({
       ...prev,
@@ -88,9 +87,9 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
         [positionId]: numValue
       }
     }));
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     setMessage('');
     
@@ -103,9 +102,9 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
           hour: parseInt(hour, 10)
         };
         
-        // Dodaj pola reqpeople_X
+        // Dodaj pola reqpeople_X, upewniając się, że minimalna wartość to 1
         positions.forEach(position => {
-          record[`reqpeople_${position.id}`] = requiredPeople[hour][position.id] || 0;
+          record[`reqpeople_${position.id}`] = Math.max(1, requiredPeople[hour][position.id] || 1);
         });
         
         dataToSave.push(record);
@@ -131,23 +130,25 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [hours, positions, requiredPeople]);
 
   if (isLoading) {
-    return <div>Ładowanie danych...</div>;
+    return <div className="loading">Ładowanie danych...</div>;
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
+    <div className="required-container">
       <h2>Ustawienia wymaganej liczby osób</h2>
       
-      <div style={{ marginBottom: 20 }}>
-        <p>Określ wymaganą liczbę osób dla każdej godziny i stanowiska:</p>
-        
-        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <p className="required-description">
+        Określ wymaganą liczbę osób dla każdej godziny i stanowiska:
+      </p>
+      
+      <div className="table-wrapper">
+        <table className="required-table">
           <thead>
             <tr>
-              <th>Godzina</th>
+              <th className="hour-header">Godzina</th>
               {positions.map(position => (
                 <th key={position.id}>{position.name}</th>
               ))}
@@ -156,15 +157,15 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
           <tbody>
             {hours.map(hour => (
               <tr key={hour}>
-                <td>{hour}:00</td>
+                <td className="hour-cell">{hour}:00</td>
                 {positions.map(position => (
-                  <td key={position.id}>
+                  <td key={position.id} className="input-cell">
                     <input
                       type="number"
-                      min="0"
-                      value={(requiredPeople[hour] && requiredPeople[hour][position.id]) || 0}
+                      min="1"
+                      value={requiredPeople[hour]?.[position.id] || 1}
                       onChange={(e) => handleInputChange(hour, position.id, e.target.value)}
-                      style={{ width: '80px', padding: '6px' }}
+                      className="number-input"
                     />
                   </td>
                 ))}
@@ -175,42 +176,23 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
       </div>
       
       {message && (
-        <div style={{ 
-          padding: '10px', 
-          marginBottom: '15px', 
-          backgroundColor: message.includes('błąd') ? '#ffebee' : '#e8f5e9',
-          border: `1px solid ${message.includes('błąd') ? '#ffcdd2' : '#c8e6c9'}`,
-          borderRadius: '4px'
-        }}>
+        <div className={`message ${message.includes('błąd') ? 'error' : 'success'}`}>
           {message}
         </div>
       )}
       
-      <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+      <div className="buttons">
         <button 
           onClick={handleSave} 
           disabled={isSaving}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: '#1976d2',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: isSaving ? 'wait' : 'pointer'
-          }}
+          className="save-btn"
         >
           {isSaving ? 'Zapisywanie...' : 'Zapisz dane'}
         </button>
         
         <button 
           onClick={onNavigateToAvailability}
-          style={{ 
-            padding: '8px 16px',
-            backgroundColor: '#f5f5f5',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
+          className="nav-btn"
         >
           Przejdź do dostępności
         </button>

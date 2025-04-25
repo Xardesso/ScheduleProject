@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { days, hours } from '../constants';
+import '../styles.css'; // Import stylów
 
 export default function SchedulePage({ agents, schedule, areas, selectedWeek }) {
   const [requiredPeople, setRequiredPeople] = useState({});
@@ -58,7 +59,7 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     return (
       <>
         <div>{days[dayIndex]}</div>
-        <div style={{ fontSize: '0.8em', color: '#666' }}>
+        <div className="date-subheader">
           {date.getDate()}.{date.getMonth() + 1}
         </div>
       </>
@@ -80,9 +81,9 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     if (!assigned || (Array.isArray(assigned) && assigned.length === 0)) {
       // Jeśli jest wymagane więcej niż 0 osób, pokaż ilość brakujących
       if (requiredCount && requiredCount > 0) {
-        return <div style={{ color: 'red' }}>— (brak {requiredCount})</div>;
+        return <div className="missing-indicator">- (brak {requiredCount})</div>;
       }
-      return "—";
+      return "-";
     }
     
     // Obsługa tablicy agentów
@@ -96,15 +97,15 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
       const missing = requiredCount - assignedAgents.length;
       
       return (
-        <div style={{ textAlign: 'left', fontSize: '0.85em' }}>
+        <div className="agents-list">
           {assignedAgents.map((agent, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
+            <div key={index} className="agent-name">
               {agent.name}
             </div>
           ))}
           {missing > 0 && (
-            <div style={{ color: 'red', fontWeight: 'bold', marginTop: '4px' }}>
-              — (brak {missing})
+            <div className="missing-indicator">
+              - (brak {missing})
             </div>
           )}
         </div>
@@ -118,25 +119,25 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     if (requiredCount > 1 && agent) {
       return (
         <div>
-          <div>{agent.name}</div>
-          <div style={{ color: 'red', fontWeight: 'bold' }}>
-            — (brak {requiredCount - 1})
+          <div className="agent-name">{agent.name}</div>
+          <div className="missing-indicator">
+            - (brak {requiredCount - 1})
           </div>
         </div>
       );
     }
     
-    return agent?.name || "—";
+    return agent?.name || "-";
   };
 
   return (
-    <div>
+    <div className="schedules-container">
       <h2>Ułożony grafik</h2>
       {areas.map(area => {
         return (
-          <div key={area.id} style={{ marginBottom: 24 }}>
+          <div key={area.id} className="schedule-section">
             <h3>{area.name}</h3>
-            <table border="1" cellPadding="6" style={{borderCollapse:'collapse'}}>
+            <table className="schedule-table">
               <thead>
                 <tr>
                   <th>Godz / Dzień</th>
@@ -154,11 +155,6 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
                       // Bezpieczne uzyskiwanie przypisanego agenta/agentów
                       const assigned = schedule[di]?.[h]?.[mappedAreaId];
                       
-                      // Dodaj logowanie dla diagnostyki - jak żądano w zapytaniu
-                      console.log(`Obszar ${area.name}, ID: ${mappedAreaId}, 
-                        Przypisani agenci dla godz ${h}, dzień ${di}:`, 
-                        schedule[di]?.[h]?.[mappedAreaId]);
-                      
                       // Pobierz wymaganą liczbę osób dla tego obszaru i godziny
                       const requiredCount = requiredPeople[h]?.[mappedAreaId] || 1;
                       
@@ -170,18 +166,16 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
                       // Sprawdź, czy jest niedobór agentów (nawet jeden brakujący)
                       const isShortage = agentCount < requiredCount;
                       
-                      // Ustaw tło: niebieskie tylko gdy wszystkie wymagane sloty są wypełnione
-                      const cellBackground = isShortage ? '#ffebee' : (agentCount > 0 ? '#def' : '#f5f5f5');
+                      // Dodaj odpowiednie klasy CSS
+                      let cellClass = '';
+                      if (agentCount > 0) {
+                        cellClass = isShortage ? 'filled shortage' : 'filled';
+                      } else if (isShortage) {
+                        cellClass = 'shortage';
+                      }
                       
                       return (
-                        <td key={di}
-                            style={{
-                              width: 120,
-                              height: agentCount > 1 || isShortage ? 'auto' : 40,
-                              textAlign: Array.isArray(assigned) ? 'left' : 'center',
-                              background: cellBackground,
-                              padding: '4px 6px'
-                            }}>
+                        <td key={di} className={cellClass}>
                           {renderAgents(assigned, requiredCount, agents)}
                         </td>
                       );
