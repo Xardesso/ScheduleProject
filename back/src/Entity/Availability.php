@@ -23,7 +23,7 @@ class Availability
     #[ORM\Column(name: "is_available")]
     private bool $isAvailable = false;
 
-    #[ORM\ManyToOne(targetEntity: Agent::class)]
+    #[ORM\ManyToOne(targetEntity: Agent::class, inversedBy: "availabilities")]
     #[ORM\JoinColumn(name: "agent_id", referencedColumnName: "id")]
     private ?Agent $agent = null;
 

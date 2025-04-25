@@ -158,12 +158,20 @@ class ScheduleController extends AbstractController
                 $data[] = [
                     'id' => $requiredAvailability->getId(),
                     'hour' => $requiredAvailability->getHour(),
-                    'reqpeople' => $requiredAvailability->getReqpeople(),
+                    'reqpeople_1' => $requiredAvailability->getReqpeople1(),
+                    'reqpeople_2' => $requiredAvailability->getReqpeople2(),
+                    'reqpeople_3' => $requiredAvailability->getReqpeople3(),
                 ];
             }
             
             return $this->json($data);
         } catch (\Exception $e) {
+            if ($this->logger) {
+                $this->logger->error('Błąd podczas pobierania wymaganej dostępności: ' . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+            
             return $this->json([
                 'error' => 'Błąd podczas pobierania wymaganej dostępności: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -182,17 +190,39 @@ class ScheduleController extends AbstractController
                 ], Response::HTTP_BAD_REQUEST);
             }
             
+            // Logowanie dla debugowania
+            if ($this->logger) {
+                $this->logger->info('Otrzymane dane wymaganej dostępności:', ['data' => $data]);
+            }
+            
             // Usuń istniejące rekordy i dodaj nowe
             $this->entityManager->createQuery('DELETE FROM App\Entity\RequiredAvailability')->execute();
             
             foreach ($data as $item) {
-                if (!isset($item['hour']) || !isset($item['reqpeople'])) {
+                if (!isset($item['hour'])) {
                     continue;
                 }
                 
                 $requiredAvailability = new RequiredAvailability();
                 $requiredAvailability->setHour($item['hour']);
-                $requiredAvailability->setReqpeople($item['reqpeople']);
+                
+                // Ustaw wymagane osoby dla każdej pozycji
+                if (isset($item['reqpeople_1'])) {
+                    $requiredAvailability->setReqpeople1($item['reqpeople_1']);
+                }
+                
+                if (isset($item['reqpeople_2'])) {
+                    $requiredAvailability->setReqpeople2($item['reqpeople_2']);
+                }
+                
+                if (isset($item['reqpeople_3'])) {
+                    $requiredAvailability->setReqpeople3($item['reqpeople_3']);
+                }
+                
+                // Obsługa starego formatu dla kompatybilności
+                if (isset($item['reqpeople']) && !isset($item['reqpeople_1'])) {
+                    $requiredAvailability->setReqpeople1($item['reqpeople']);
+                }
                 
                 $this->entityManager->persist($requiredAvailability);
             }
@@ -201,6 +231,12 @@ class ScheduleController extends AbstractController
             
             return $this->json(['success' => true]);
         } catch (\Exception $e) {
+            if ($this->logger) {
+                $this->logger->error('Błąd podczas zapisywania wymaganej dostępności: ' . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+            
             return $this->json([
                 'error' => 'Błąd podczas zapisywania wymaganej dostępności: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);

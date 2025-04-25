@@ -55,4 +55,24 @@ class Agent
     {
         return $this->availabilities;
     }
+    
+    public function addAvailability(Availability $availability): self
+    {
+        if (!$this->availabilities->contains($availability)) {
+            $this->availabilities[] = $availability;
+            $availability->setAgent($this);
+        }
+        return $this;
+    }
+
+    public function removeAvailability(Availability $availability): self
+    {
+        if ($this->availabilities->removeElement($availability)) {
+            // Jeśli availability nadal wskazuje na tego agenta, zerujemy referencję
+            if ($availability->getAgent() === $this) {
+                $availability->setAgent(null);
+            }
+        }
+        return $this;
+    }
 }

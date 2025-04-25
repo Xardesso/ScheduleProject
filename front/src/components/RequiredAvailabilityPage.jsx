@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
   const [requiredPeople, setRequiredPeople] = useState({});
@@ -6,14 +6,17 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const hours = [9, 10, 11, 12, 13, 14, 15, 16];
+  // Użyj useMemo do zapamiętania tablic hours i positions
+  const hours = useMemo(() => [9, 10, 11, 12, 13, 14, 15, 16], []);
+  
+  const positions = useMemo(() => [
+    { id: 1, name: "Obsługa klienta" },
+    { id: 2, name: "Pozyskiwanie klienta" },
+    { id: 3, name: "Wsparcie techniczne" }
+  ], []);
 
-  // Pobierz istniejące dane przy ładowaniu komponentu
-  useEffect(() => {
-    fetchRequiredAvailability();
-  }, []);
-
-  const fetchRequiredAvailability = async () => {
+  // Definiujemy fetchRequiredAvailability jako useCallback, aby uniknąć problemów z ESLint
+  const fetchRequiredAvailability = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('http://127.0.0.1:8000/api/required-availability');
@@ -24,35 +27,66 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
       
       const data = await response.json();
       
-      // Przekształć dane z tablicy do obiektu indeksowanego godzinami
+      // Przekształć dane z tablicy do struktury zagnieżdżonej
       const requiredByHour = {};
+      
+      // Inicjalizuj dla wszystkich godzin i stanowisk
+      hours.forEach(hour => {
+        requiredByHour[hour] = {};
+        positions.forEach(position => {
+          requiredByHour[hour][position.id] = 0;
+        });
+      });
+      
+      // Wypełnij danymi z API
       data.forEach(item => {
-        requiredByHour[item.hour] = item.reqpeople;
+        const hour = item.hour;
+        // Obsługa danych z API - zakładamy, że API zwraca dla każdego rekordu:
+        // { id, hour, reqpeople_1, reqpeople_2, reqpeople_3 }
+        positions.forEach(position => {
+          // Pobierz wartość dla danej pozycji
+          const fieldName = `reqpeople_${position.id}`;
+          if (item[fieldName] !== undefined) {
+            requiredByHour[hour][position.id] = item[fieldName];
+          }
+        });
       });
       
       setRequiredPeople(requiredByHour);
-      setIsLoading(false);
     } catch (error) {
       console.error('Błąd podczas pobierania danych:', error);
       setMessage('Wystąpił błąd podczas pobierania danych');
-      setIsLoading(false);
       
       // Inicjalizuj pustymi wartościami w przypadku błędu
       const emptyValues = {};
       hours.forEach(hour => {
-        emptyValues[hour] = 0;
+        emptyValues[hour] = {};
+        positions.forEach(position => {
+          emptyValues[hour][position.id] = 0;
+        });
       });
+      
       setRequiredPeople(emptyValues);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [hours, positions]);  // Dodaj hours i positions jako zależności
 
-  const handleInputChange = (hour, value) => {
+  // Pobierz istniejące dane przy ładowaniu komponentu
+  useEffect(() => {
+    fetchRequiredAvailability();
+  }, [fetchRequiredAvailability]);
+
+  const handleInputChange = (hour, positionId, value) => {
     // Konwertuj wartość wejściową na liczbę całkowitą
     const numValue = parseInt(value, 10) || 0;
     
     setRequiredPeople(prev => ({
       ...prev,
-      [hour]: numValue
+      [hour]: {
+        ...prev[hour],
+        [positionId]: numValue
+      }
     }));
   };
 
@@ -61,11 +95,21 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
     setMessage('');
     
     try {
-      // Przekształć obiekt na tablicę obiektów do wysłania
-      const dataToSave = Object.entries(requiredPeople).map(([hour, reqpeople]) => ({
-        hour: parseInt(hour, 10),
-        reqpeople
-      }));
+      // Przekształć strukturę zagnieżdżoną na tablicę rekordów do zapisu
+      const dataToSave = [];
+      
+      hours.forEach(hour => {
+        const record = {
+          hour: parseInt(hour, 10)
+        };
+        
+        // Dodaj pola reqpeople_X
+        positions.forEach(position => {
+          record[`reqpeople_${position.id}`] = requiredPeople[hour][position.id] || 0;
+        });
+        
+        dataToSave.push(record);
+      });
       
       // Wysłanie danych do API
       const response = await fetch('http://127.0.0.1:8000/api/required-availability', {
@@ -98,28 +142,32 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
       <h2>Ustawienia wymaganej liczby osób</h2>
       
       <div style={{ marginBottom: 20 }}>
-        <p>Określ wymaganą liczbę osób dla każdej godziny:</p>
+        <p>Określ wymaganą liczbę osób dla każdej godziny i stanowiska:</p>
         
         <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
               <th>Godzina</th>
-              <th>Wymagana liczba osób</th>
+              {positions.map(position => (
+                <th key={position.id}>{position.name}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {hours.map(hour => (
               <tr key={hour}>
                 <td>{hour}:00</td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    value={requiredPeople[hour] || 0}
-                    onChange={(e) => handleInputChange(hour, e.target.value)}
-                    style={{ width: '80px', padding: '6px' }}
-                  />
-                </td>
+                {positions.map(position => (
+                  <td key={position.id}>
+                    <input
+                      type="number"
+                      min="0"
+                      value={(requiredPeople[hour] && requiredPeople[hour][position.id]) || 0}
+                      onChange={(e) => handleInputChange(hour, position.id, e.target.value)}
+                      style={{ width: '80px', padding: '6px' }}
+                    />
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

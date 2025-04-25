@@ -17,8 +17,22 @@ class RequiredAvailability
     #[ORM\Column]
     private ?int $hour = null;
 
-    #[ORM\Column]
-    private ?int $reqpeople = null;
+    #[ORM\Column(nullable: false, options: ["default" => 1])]
+    private int $reqpeople_1 = 1;
+
+    #[ORM\Column(nullable: false, options: ["default" => 1])]
+    private int $reqpeople_2 = 1;
+
+    #[ORM\Column(nullable: false, options: ["default" => 1])]
+    private int $reqpeople_3 = 1;
+
+    public function __construct()
+    {
+        // Ustaw domyślne wartości w konstruktorze
+        $this->reqpeople_1 = 1;
+        $this->reqpeople_2 = 1;
+        $this->reqpeople_3 = 1;
+    }
 
     public function getId(): ?int
     {
@@ -36,14 +50,52 @@ class RequiredAvailability
         return $this;
     }
 
-    public function getReqpeople(): ?int
+    public function getReqpeople1(): int
     {
-        return $this->reqpeople;
+        return $this->reqpeople_1;
     }
 
-    public function setReqpeople(int $reqpeople): self
+    public function setReqpeople1(?int $reqpeople): self
     {
-        $this->reqpeople = $reqpeople;
+        // Zapewnij minimalną wartość 1
+        $this->reqpeople_1 = $reqpeople !== null ? max(1, $reqpeople) : 1;
+        return $this;
+    }
+
+    public function getReqpeople2(): int
+    {
+        return $this->reqpeople_2;
+    }
+
+    public function setReqpeople2(?int $reqpeople): self
+    {
+        // Zapewnij minimalną wartość 1
+        $this->reqpeople_2 = $reqpeople !== null ? max(1, $reqpeople) : 1;
+        return $this;
+    }
+
+    public function getReqpeople3(): int
+    {
+        return $this->reqpeople_3;
+    }
+
+    public function setReqpeople3(?int $reqpeople): self
+    {
+        // Zapewnij minimalną wartość 1
+        $this->reqpeople_3 = $reqpeople !== null ? max(1, $reqpeople) : 1;
+        return $this;
+    }
+    
+    // Dla zachowania kompatybilności wstecznej
+    public function getReqpeople(): int
+    {
+        return $this->reqpeople_1;
+    }
+
+    public function setReqpeople(?int $reqpeople): self
+    {
+        // Zapewnij minimalną wartość 1
+        $this->reqpeople_1 = $reqpeople !== null ? max(1, $reqpeople) : 1;
         return $this;
     }
 }
