@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
   const [requiredPeople, setRequiredPeople] = useState({});
@@ -111,7 +110,7 @@ const RequiredAvailabilityPage = ({ onNavigateToAvailability }) => {
           <tbody>
             {hours.map(hour => (
               <tr key={hour}>
-                <td>{hour}.00</td>
+                <td>{hour}:00</td>
                 <td>
                   <input
                     type="number"

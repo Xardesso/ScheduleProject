@@ -1,5 +1,5 @@
 // utils/fetchSchedule.js
-export const fetchSchedule = async (agents, availability, areas) => {
+export const fetchSchedule = async (agents, availability, areas, selectedWeek = null) => {
     try {
       // Dodaj informacje o dostępności agentów
       console.log("Dane dostępności agentów:", availability);
@@ -75,11 +75,21 @@ export const fetchSchedule = async (agents, availability, areas) => {
       console.log("Agenci z umiejętnościami:", agentsWithSkills);
       console.log("Obszary z numerycznymi ID:", areasWithNumberIds);
       
+      // Dodaj informacje o wybranym tygodniu, jeśli jest dostępny
+      let dateRange = null;
+      if (selectedWeek && Array.isArray(selectedWeek) && selectedWeek.length > 0) {
+        const startDate = selectedWeek[0].toISOString().split('T')[0]; // Format YYYY-MM-DD
+        const endDate = selectedWeek[6].toISOString().split('T')[0];
+        dateRange = { startDate, endDate };
+        console.log(`Pobieranie harmonogramu dla tygodnia: ${startDate} - ${endDate}`);
+      }
+      
       // Przygotowanie danych do wysłania
       const requestData = {
         agents: agentsWithSkills,
         availability: availability || {},
-        areas: areasWithNumberIds
+        areas: areasWithNumberIds,
+        dateRange: dateRange // Dodaj datę tygodnia do zapytania
       };
       
       console.log("Wysyłanie danych do generowania grafiku:", requestData);
@@ -104,38 +114,13 @@ export const fetchSchedule = async (agents, availability, areas) => {
       const data = await response.json();
       console.log("Otrzymany harmonogram:", data);
       
-      // Sprawdź strukturę danych - obsługa różnych formatów
-      let schedule;
-      if (data && typeof data === 'object') {
-        if (Array.isArray(data)) {
-          schedule = data;
-        } else if (data.schedule && Array.isArray(data.schedule)) {
-          schedule = data.schedule;
-        } else {
-          // Jeśli to obiekt z kluczami numerycznymi (0, 1, 2, itd.), przekształć na tablicę
-          const keys = Object.keys(data).filter(key => !isNaN(parseInt(key, 10)));
-          if (keys.length > 0 && keys.every(key => typeof data[key] === 'object')) {
-            schedule = [];
-            keys.forEach(key => {
-              schedule[parseInt(key, 10)] = data[key];
-            });
-          } else {
-            // Ostateczność - użyj danych tak jak są
-            schedule = data;
-          }
-        }
-      } else {
-        console.error("Niepoprawny format danych harmonogramu:", data);
-        schedule = [];
-      }
-      
       // Analiza harmonogramu - sprawdź czy jest pusty
-      const filledSlots = countFilledSlots(schedule);
+      const filledSlots = countFilledSlots(data);
       console.log(`Wypełnione sloty: ${filledSlots.filled} z ${filledSlots.total} (${(filledSlots.filled / filledSlots.total * 100).toFixed(2)}%)`);
       
-     
+    
       
-      return schedule;
+      return data;
     } catch (err) {
       console.error('Błąd podczas pobierania:', err);
       // Zwróć pusty harmonogram
@@ -157,13 +142,15 @@ function countFilledSlots(schedule) {
     for (let hour = 9; hour <= 16; hour++) {
       if (!schedule[day][hour]) continue;
       
-      // Iteruj po obszarach
-      Object.keys(schedule[day][hour]).forEach(areaId => {
+      // Iteruj po obszarach - używamy for zamiast forEach, aby uniknąć błędu ESLint
+      const areaKeys = Object.keys(schedule[day][hour]);
+      for (let i = 0; i < areaKeys.length; i++) {
+        const areaId = areaKeys[i];
         total++;
         if (schedule[day][hour][areaId] !== null) {
           filled++;
         }
-      });
+      }
     }
   }
   
@@ -183,26 +170,4 @@ function generateEmptySchedule() {
 }
 
 // Funkcja symulująca dane harmonogramu dla testów interfejsu
-function simulateScheduleData(areas, agents) {
-  const schedule = [];
-  
-  for (let day = 0; day < 7; day++) {
-    schedule[day] = {};
-    for (let hour = 9; hour <= 16; hour++) {
-      schedule[day][hour] = {};
-      
-      // Przydziel agentów do obszarów (losowo)
-      areas.forEach(area => {
-        const areaId = area.id;
-        // Losowy agent lub null (20% szans na null)
-        const randomAgent = Math.random() < 0.8 ? 
-          agents[Math.floor(Math.random() * agents.length)] : 
-          null;
-        
-        schedule[day][hour][areaId] = randomAgent ? randomAgent.id : null;
-      });
-    }
-  }
-  
-  return schedule;
-}
+

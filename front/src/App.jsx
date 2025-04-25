@@ -83,7 +83,7 @@ export default function App() {
       const updateScheduleForWeek = async () => {
         setIsLoading(true);
         try {
-          const newSchedule = await fetchSchedule(agents, availability, areas);
+          const newSchedule = await fetchSchedule(agents, availability, areas, selectedWeek);
           setSchedule(newSchedule);
         } catch (error) {
           console.error('Błąd podczas aktualizacji harmonogramu:', error);
@@ -222,7 +222,7 @@ export default function App() {
     
     setIsLoading(true);
     try {
-      const sched = await fetchSchedule(agents, availability, areas);
+      const sched = await fetchSchedule(agents, availability, areas, selectedWeek);
       setSchedule(sched);
       setPage(2);
     } catch (error) {

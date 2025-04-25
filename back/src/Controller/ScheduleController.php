@@ -8,6 +8,7 @@ use App\Entity\Area;
 use App\Entity\Skill;
 use App\Entity\Availability;
 use App\Entity\Schedule;
+use App\Entity\RequiredAvailability;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -53,22 +54,22 @@ class ScheduleController extends AbstractController
             $agents = $data['agents'] ?? [];
             $availability = $data['availability'] ?? [];
             $areas = $data['areas'] ?? [];
+            $dateRange = $data['dateRange'] ?? null; // Dodane: pobieranie zakresu dat
             
             // Logowanie danych przed generowaniem
             if ($this->logger) {
                 $this->logger->info('Dane do generowania grafiku', [
                     'agents_count' => count($agents),
-                    'areas_count' => count($areas)
+                    'areas_count' => count($areas),
+                    'dateRange' => $dateRange
                 ]);
             }
             
-            // Generowanie harmonogramu
-            $schedule = $this->scheduler->generateSchedule($agents, $availability, $areas);
+            // Generowanie harmonogramu z przekazaniem parametru dateRange
+            $schedule = $this->scheduler->generateSchedule($agents, $availability, $areas, $dateRange);
             
             // Zwrócenie wyniku jako JSON
-            return $this->json([
-                'schedule' => $schedule
-            ]);
+            return $this->json($schedule); // Zmiana: zwracamy bezpośrednio harmonogram
             
         } catch (\Exception $e) {
             // Logowanie błędu
@@ -138,6 +139,70 @@ class ScheduleController extends AbstractController
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/api/required-availability', methods: ['GET'])]
+    public function getRequiredAvailability(): JsonResponse
+    {
+        try {
+            $requiredAvailabilities = $this->entityManager->createQueryBuilder()
+                ->select('r')
+                ->from('App\Entity\RequiredAvailability', 'r')
+                ->getQuery()
+                ->getResult();
+            
+            $data = [];
+            foreach ($requiredAvailabilities as $requiredAvailability) {
+                $data[] = [
+                    'id' => $requiredAvailability->getId(),
+                    'hour' => $requiredAvailability->getHour(),
+                    'reqpeople' => $requiredAvailability->getReqpeople(),
+                ];
+            }
+            
+            return $this->json($data);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'Błąd podczas pobierania wymaganej dostępności: ' . $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/api/required-availability', methods: ['POST'])]
+    public function saveRequiredAvailability(Request $request): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            
+            if (!is_array($data)) {
+                return $this->json([
+                    'error' => 'Nieprawidłowy format danych'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            
+            // Usuń istniejące rekordy i dodaj nowe
+            $this->entityManager->createQuery('DELETE FROM App\Entity\RequiredAvailability')->execute();
+            
+            foreach ($data as $item) {
+                if (!isset($item['hour']) || !isset($item['reqpeople'])) {
+                    continue;
+                }
+                
+                $requiredAvailability = new RequiredAvailability();
+                $requiredAvailability->setHour($item['hour']);
+                $requiredAvailability->setReqpeople($item['reqpeople']);
+                
+                $this->entityManager->persist($requiredAvailability);
+            }
+            
+            $this->entityManager->flush();
+            
+            return $this->json(['success' => true]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 'Błąd podczas zapisywania wymaganej dostępności: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
