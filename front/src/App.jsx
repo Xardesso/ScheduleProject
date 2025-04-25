@@ -164,7 +164,6 @@ export default function App() {
       
       setPendingChanges([]);
       
-      alert('Wszystkie zmiany zostały zapisane!');
     } catch (error) {
       console.error('Błąd podczas zapisywania zmian:', error);
       alert('Wystąpił błąd podczas zapisywania zmian.');
