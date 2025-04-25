@@ -6,6 +6,7 @@ use App\Entity\Agent;
 use App\Entity\Area;
 use App\Entity\Skill;
 use App\Entity\Availability;
+use App\Entity\RequiredAvailability;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -166,9 +167,14 @@ class SchedulerService
                     // Przydziel agentów do obszarów
                     foreach ($areas as $area) {
                         $areaId = (int)$area['id'];
-                        $schedule[$day][$hour][$areaId] = null;
+                        
+                        // Inicjalizuj jako pustą tablicę zamiast null
+                        $schedule[$day][$hour][$areaId] = [];
                         
                         if (empty($availableAgents)) continue;
+                        
+                        // Pobierz liczbę wymaganych osób dla tego obszaru i godziny
+                        $requiredPeople = $this->getRequiredPeopleCount($areaId, $hour);
                         
                         // Sortuj dostępnych agentów według efektywności dla danego obszaru
                         $candidates = [];
@@ -177,24 +183,35 @@ class SchedulerService
                             $candidates[$agentId] = $efficiency;
                         }
                         
-                        // Sortuj malejąco według efektywności
+                        // Sortuj malejąco według efektywności (priorytet dla większego skilla)
                         arsort($candidates);
                         
-                        // Wybierz najlepszego agenta
-                        if (!empty($candidates)) {
-                            $bestAgentId = array_key_first($candidates);
-                            $bestEfficiency = $candidates[$bestAgentId];
+                        $this->log("Wymagana liczba osób dla obszaru $areaId o godzinie $hour: $requiredPeople");
+                        $this->log("Kandydaci posortowani według efektywności:", $candidates);
+                        
+                        // Przydziel tylu agentów, ilu jest wymaganych (lub mniej, jeśli brakuje dostępnych)
+                        $assignedCount = 0;
+                        $assignedAgents = [];
+                        
+                        foreach ($candidates as $agentId => $efficiency) {
+                            if ($assignedCount >= $requiredPeople) break;
                             
-                            // Przypisz agenta do obszaru
-                            $schedule[$day][$hour][$areaId] = $bestAgentId;
+                            // Dodaj agenta do przydzielonych
+                            $assignedAgents[] = (int)$agentId;
+                            $assignedCount++;
                             
-                            // Usuń wybranego agenta z dostępnych
-                            $availableAgents = array_filter($availableAgents, function($id) use ($bestAgentId) {
-                                return $id != $bestAgentId;
-                            });
+                            // Usuń przydzielonego agenta z dostępnych
+                            $availableAgents = array_values(array_filter($availableAgents, function($id) use ($agentId) {
+                                return $id != $agentId;
+                            }));
                             
-                            $this->log("Przydzielono agenta $bestAgentId do obszaru $areaId (wydajność: $bestEfficiency)");
+                            $this->log("Przydzielono agenta $agentId do obszaru $areaId (wydajność: $efficiency)");
                         }
+                        
+                        // Zapisz przydzielonych agentów w harmonogramie (jako tablicę)
+                        $schedule[$day][$hour][$areaId] = !empty($assignedAgents) ? $assignedAgents : [];
+                        
+                        $this->log("Przydzielono łącznie $assignedCount agentów do obszaru $areaId (wymagane: $requiredPeople)");
                     }
                 }
             }
@@ -214,6 +231,33 @@ class SchedulerService
         }
     }
     
+    /**
+     * Pobiera wymaganą liczbę osób dla danego obszaru i godziny
+     */
+    private function getRequiredPeopleCount(int $areaId, int $hour): int
+    {
+        try {
+            $requiredAvailability = $this->entityManager->getRepository(RequiredAvailability::class)
+                ->findOneBy(['hour' => $hour]);
+            
+            if (!$requiredAvailability) {
+                return 1; // Domyślnie 1 osoba jeśli nie znaleziono rekordu
+            }
+            
+            // Pobierz wartość dla odpowiedniego obszaru
+            $methodName = "getReqpeople{$areaId}";
+            if (method_exists($requiredAvailability, $methodName)) {
+                $value = $requiredAvailability->$methodName();
+                return $value !== null ? max(1, $value) : 1; // Min. 1 osoba
+            }
+            
+            return 1; // Domyślnie 1 osoba
+        } catch (\Exception $e) {
+            $this->log('Błąd podczas pobierania wymaganej liczby osób: ' . $e->getMessage(), [], 'error');
+            return 1; // Domyślnie 1 osoba w przypadku błędu
+        }
+    }
+    
     private function getEmptySchedule(array $areas = []): array
     {
         $schedule = [];
@@ -226,7 +270,7 @@ class SchedulerService
                 foreach ($areas as $area) {
                     if (isset($area['id'])) {
                         $areaId = (int)$area['id'];
-                        $schedule[$day][$hour][$areaId] = null;
+                        $schedule[$day][$hour][$areaId] = []; // Pusta tablica zamiast null
                     }
                 }
             }

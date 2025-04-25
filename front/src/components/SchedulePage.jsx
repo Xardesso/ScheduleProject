@@ -43,6 +43,38 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     return agentsList.find(a => String(a.id) === idToFind);
   };
 
+  // Nowa funkcja do renderowania agentów - obsługuje zarówno pojedynczego agenta jak i tablicę
+  const renderAgents = (assigned, agentsList) => {
+    if (assigned === null || assigned === undefined) {
+      return "—";
+    }
+    
+    // Obsługa tablicy agentów
+    if (Array.isArray(assigned)) {
+      // Znajdź wszystkich agentów z tablicy ID
+      const assignedAgents = assigned
+        .map(id => findAgent(id, agentsList))
+        .filter(a => a !== null);
+      
+      if (assignedAgents.length === 0) return "—";
+      
+      // Zwróć listę z nazwami agentów
+      return (
+        <div style={{ textAlign: 'left', fontSize: '0.85em' }}>
+          {assignedAgents.map((agent, index) => (
+            <div key={index} style={{ marginBottom: '2px' }}>
+              {agent.name}
+            </div>
+          ))}
+        </div>
+      );
+    } 
+    
+    // Obsługa pojedynczego agenta (dla kompatybilności wstecznej)
+    const agent = findAgent(assigned, agentsList);
+    return agent?.name || "—";
+  };
+
   return (
     <div>
       <h2>Ułożony grafik</h2>
@@ -68,26 +100,24 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
                       // Użyj zmapowanego ID obszaru zamiast bezpośrednio area.id
                       const mappedAreaId = autoAreaIdMap[area.id];
                       
-                      // Bezpieczne uzyskiwanie ID agenta używając zmapowanego ID obszaru
-                      const assignedId = schedule[di]?.[h]?.[mappedAreaId];
+                      // Bezpieczne uzyskiwanie przypisanego agenta/agentów
+                      const assigned = schedule[di]?.[h]?.[mappedAreaId];
                       
-                      // Log dla diagnostyki
-                      
-                      // Używamy nowej funkcji findAgent
-                      const agent = findAgent(assignedId, agents);
-                      
-                      // Log dla debugowania
-                      if (assignedId !== null && assignedId !== undefined && !agent) {
-                        console.log(`Nie znaleziono agenta dla ID=${assignedId}, dzień=${di}, godz=${h}, obszar=${area.id}`);
-                      }
+                      // Sprawdź liczbę agentów dla stylizacji
+                      const agentCount = Array.isArray(assigned) ? 
+                        assigned.filter(id => id !== null).length : 
+                        (assigned !== null && assigned !== undefined ? 1 : 0);
                       
                       return (
                         <td key={di}
                             style={{
-                              width: 60, height: 40, textAlign: 'center',
-                              background: agent ? '#def' : '#f5f5f5'
+                              width: 120, // Zwiększona szerokość dla lepszego wyświetlania wielu agentów
+                              height: agentCount > 1 ? 'auto' : 40, // Dynamiczna wysokość zależna od liczby agentów
+                              textAlign: Array.isArray(assigned) ? 'left' : 'center',
+                              background: agentCount > 0 ? '#def' : '#f5f5f5',
+                              padding: '4px 6px'
                             }}>
-                          {agent?.name || '—'}
+                          {renderAgents(assigned, agents)}
                         </td>
                       );
                     })}
