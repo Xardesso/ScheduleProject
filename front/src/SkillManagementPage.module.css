@@ -1,0 +1,136 @@
+/* SkillManagementPage.css */
+
+.skill-management-container {
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: sans-serif;
+  }
+  
+  .skill-management-container h2 {
+    color: #333;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+  }
+  
+  .selection-container {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .selection-container label {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .agent-select {
+    padding: 8px;
+    min-width: 200px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .message {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+  }
+  
+  .message.success {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #2e7d32;
+  }
+  
+  .message.error {
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+    color: #c62828;
+  }
+  
+  .feedback-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .feedback-section {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+  }
+  
+  .feedback-section h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+  
+  .skill-level {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .skill-level strong {
+    font-size: 18px;
+    color: #1976d2;
+  }
+  
+  .feedback-question {
+    margin-bottom: 15px;
+    font-weight: bold;
+  }
+  
+  .buttons-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .positive-button {
+    padding: 8px 16px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+  
+  .positive-button:hover {
+    background-color: #388e3c;
+  }
+  
+  .negative-button {
+    padding: 8px 16px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+  
+  .negative-button:hover {
+    background-color: #d32f2f;
+  }
+  
+  /* Dodatkowe style dla lepszej responsywności */
+  @media (max-width: 600px) {
+    .buttons-container {
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .feedback-section {
+      padding: 10px;
+    }
+  }
+  

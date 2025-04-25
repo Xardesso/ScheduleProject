@@ -317,25 +317,65 @@ class ScheduleController extends AbstractController
         try {
             $data = json_decode($request->getContent(), true);
             
+            // Dodanie logowania dla lepszej diagnostyki
+            if ($this->logger) {
+                $this->logger->info('Otrzymane dane umiejętności:', ['data' => $data]);
+            }
+            
             if (!isset($data['agentId']) || !isset($data['areaId'])) {
                 return $this->json([
                     'error' => 'Brak wymaganych danych (agentId, areaId)'
                 ], Response::HTTP_BAD_REQUEST);
             }
             
-            $agent = $this->entityManager->getRepository(Agent::class)->find($data['agentId']);
-            $area = $this->entityManager->getRepository(Area::class)->find($data['areaId']);
+            // Konwersja ID na liczby całkowite
+            $agentId = (int)$data['agentId'];
+            $areaId = (int)$data['areaId'];
+            $efficiency = isset($data['efficiency']) ? (float)$data['efficiency'] : 1.0;
+            
+            $agent = $this->entityManager->getRepository(Agent::class)->find($agentId);
+            $area = $this->entityManager->getRepository(Area::class)->find($areaId);
             
             if (!$agent || !$area) {
                 return $this->json([
-                    'error' => 'Agent lub obszar nie znaleziony'
+                    'error' => 'Agent lub obszar nie znaleziony',
+                    'agent_id' => $agentId,
+                    'area_id' => $areaId
                 ], Response::HTTP_NOT_FOUND);
             }
             
+            // Sprawdź, czy umiejętność już istnieje
+            $existingSkill = $this->entityManager->getRepository(Skill::class)->findOneBy([
+                'agent' => $agent,
+                'area' => $area
+            ]);
+            
+            if ($existingSkill) {
+                // Aktualizuj istniejącą umiejętność
+                $existingSkill->setEfficiency($efficiency);
+                $this->entityManager->flush();
+                
+                if ($this->logger) {
+                    $this->logger->info('Zaktualizowano umiejętność:', [
+                        'id' => $existingSkill->getId(),
+                        'efficiency' => $efficiency
+                    ]);
+                }
+                
+                return $this->json([
+                    'id' => $existingSkill->getId(),
+                    'agentId' => $existingSkill->getAgent()->getId(),
+                    'areaId' => $existingSkill->getArea()->getId(),
+                    'efficiency' => $existingSkill->getEfficiency(),
+                    'message' => 'Umiejętność zaktualizowana'
+                ]);
+            }
+            
+            // Utwórz nową umiejętność
             $skill = new Skill();
             $skill->setAgent($agent);
             $skill->setArea($area);
-            $skill->setEfficiency($data['efficiency'] ?? 1.0);
+            $skill->setEfficiency($efficiency);
             
             $this->entityManager->persist($skill);
             $this->entityManager->flush();
@@ -345,10 +385,20 @@ class ScheduleController extends AbstractController
                 'agentId' => $skill->getAgent()->getId(),
                 'areaId' => $skill->getArea()->getId(),
                 'efficiency' => $skill->getEfficiency(),
+                'message' => 'Nowa umiejętność utworzona'
             ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
+            // Rozszerzone logowanie błędów
+            if ($this->logger) {
+                $this->logger->error('Błąd podczas przetwarzania umiejętności: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+            
             return $this->json([
-                'error' => 'Błąd podczas tworzenia umiejętności: ' . $e->getMessage()
+                'error' => 'Błąd podczas tworzenia/aktualizacji umiejętności: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

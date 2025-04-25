@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchAgents } from './utils/fetchAgents';
 import { areas } from './constants';
 import AvailabilityPage from './components/AvailabilityPage';
@@ -6,9 +6,10 @@ import SchedulePage from './components/SchedulePage';
 import { fetchSchedule } from './utils/fetchSchedule';
 import { saveAvailability, fetchAvailability, deleteAvailability } from './utils/fetchAvailability';
 import RequiredAvailabilityPage from './components/RequiredAvailabilityPage';
+import SkillManagementPage from './components/SkillManagementPage';
 
 export default function App() {
-  const [page, setPage] = useState(1); // 1=Dostępność, 2=Grafik, 3=Wymagana liczba osób
+  const [page, setPage] = useState(1); // 1=Dostępność, 2=Grafik, 3=Wymagana liczba osób, 4=Zarządzanie umiejętnościami
   const [selectedAgent, setAgent] = useState(null);
   const [availability, setAvailability] = useState({});
   const [schedule, setSchedule] = useState(null);
@@ -37,46 +38,46 @@ export default function App() {
     return dates;
   }
 
-  // Zmodyfikowana funkcja do ładowania zapisanych dostępności
-  useEffect(() => {
-    const loadAvailability = async () => {
-      setIsLoading(true);
-      try {
-        // Przekaż selectedWeek do funkcji fetchAvailability
-        const availabilityData = await fetchAvailability(null, selectedWeek);
+  // Funkcja do ładowania zapisanych dostępności
+  const loadAvailability = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Przekaż selectedWeek do funkcji fetchAvailability
+      const availabilityData = await fetchAvailability(null, selectedWeek);
+      
+      if (availabilityData && Array.isArray(availabilityData)) {
+        // Przekształć dane z API na format używany przez komponent
+        const formattedData = {};
         
-        if (availabilityData && Array.isArray(availabilityData)) {
-          // Przekształć dane z API na format używany przez komponent
-          const formattedData = {};
+        availabilityData.forEach(item => {
+          const { agentId, date, hour, isAvailable } = item;
+          if (!formattedData[agentId]) {
+            formattedData[agentId] = {};
+          }
           
-          availabilityData.forEach(item => {
-            const { agentId, date, hour, isAvailable } = item;
-            if (!formattedData[agentId]) {
-              formattedData[agentId] = {};
-            }
-            
-            // Utwórz klucz slotu w formacie YYYY-MM-DD-H
-            const slotKey = `${date}-${hour}`;
-            formattedData[agentId][slotKey] = isAvailable;
-          });
-          
-          console.log("Załadowane dane dostępności dla tygodnia:", selectedWeek[0].toISOString().split('T')[0], "-", selectedWeek[6].toISOString().split('T')[0]);
-          console.log("Dane dostępności:", formattedData);
-          setAvailability(formattedData);
-        } else {
-          console.error("Nieprawidłowy format danych z API:", availabilityData);
-        }
-      } catch (error) {
-        console.error("Błąd podczas ładowania dostępności:", error);
-      } finally {
-        setIsLoading(false);
+          // Utwórz klucz slotu w formacie YYYY-MM-DD-H
+          const slotKey = `${date}-${hour}`;
+          formattedData[agentId][slotKey] = isAvailable;
+        });
+        
+        console.log("Załadowane dane dostępności dla tygodnia:", selectedWeek[0].toISOString().split('T')[0], "-", selectedWeek[6].toISOString().split('T')[0]);
+        setAvailability(formattedData);
+      } else {
+        console.error("Nieprawidłowy format danych z API:", availabilityData);
       }
-    };
-    
-    loadAvailability();
-  }, [selectedWeek]); // Dodano selectedWeek jako zależność, żeby efekt uruchamiał się przy zmianie tygodnia
+    } catch (error) {
+      console.error("Błąd podczas ładowania dostępności:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedWeek]);
 
-  // NOWY EFEKT: Aktualizuje harmonogram, gdy zmienia się wybrany tydzień
+  // Efekt do ładowania dostępności
+  useEffect(() => {
+    loadAvailability();
+  }, [loadAvailability]);
+
+  // Efekt do aktualizacji harmonogramu przy zmianie tygodnia
   useEffect(() => {
     // Pobierz nowy harmonogram tylko jeśli jesteśmy na stronie harmonogramu
     if (page === 2 && agents.length > 0) {
@@ -94,9 +95,9 @@ export default function App() {
       
       updateScheduleForWeek();
     }
-  }, [selectedWeek, page, agents, availability]); // Dodano availability jako zależność
+  }, [selectedWeek, page, agents, availability]);
 
-  // Zmodyfikowana funkcja toggleSlot obsługująca odznaczanie niezapisanych zmian
+  // Funkcja do przełączania dostępności agentów
   const toggleSlot = (agentId, slot, slotInfo) => {
     console.log(`Toggle slot: Agent ${agentId}, Slot ${slot}`);
     
@@ -182,23 +183,8 @@ export default function App() {
       const results = await Promise.all(savePromises);
       console.log("Wyniki zapisywania:", results);
       
-      // Po zapisaniu, odśwież dane dostępności z uwzględnieniem wybranego tygodnia
-      const freshData = await fetchAvailability(null, selectedWeek);
-      if (freshData && Array.isArray(freshData)) {
-        const formattedData = {};
-        
-        freshData.forEach(item => {
-          const { agentId, date, hour, isAvailable } = item;
-          if (!formattedData[agentId]) {
-            formattedData[agentId] = {};
-          }
-          
-          const slotKey = `${date}-${hour}`;
-          formattedData[agentId][slotKey] = isAvailable;
-        });
-        
-        setAvailability(formattedData);
-      }
+      // Po zapisaniu, odśwież dane dostępności
+      await loadAvailability();
       
       // Wyczyść listę oczekujących zmian
       setPendingChanges([]);
@@ -249,7 +235,7 @@ export default function App() {
     };
     
     loadAgents();
-  }, []);
+  }, [selectedAgent]);
 
   // Funkcja do zmiany tygodnia
   const changeWeek = (direction) => {
@@ -326,6 +312,20 @@ export default function App() {
         >
           Wymagana liczba osób
         </button>
+        
+        <button 
+          onClick={() => setPage(4)} 
+          disabled={page === 4 || isLoading}
+          style={{ 
+            padding: '8px 16px',
+            backgroundColor: page === 4 ? '#e0e0e0' : '#f5f5f5',
+            fontWeight: page === 4 ? 'bold' : 'normal',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
+        >
+          Zarządzanie umiejętnościami
+        </button>
       </div>
 
       {agents.length === 0 ? (
@@ -354,6 +354,8 @@ export default function App() {
         <RequiredAvailabilityPage
           onNavigateToAvailability={() => setPage(1)}
         />
+      ) : page === 4 ? (
+        <SkillManagementPage />
       ) : null}
     </div>
   );
