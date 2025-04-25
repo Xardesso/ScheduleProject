@@ -133,11 +133,7 @@ export const fetchSchedule = async (agents, availability, areas) => {
       const filledSlots = countFilledSlots(schedule);
       console.log(`Wypełnione sloty: ${filledSlots.filled} z ${filledSlots.total} (${(filledSlots.filled / filledSlots.total * 100).toFixed(2)}%)`);
       
-      // Jeśli harmonogram jest prawie pusty, zasymuluj dane dla testu interfejsu
-      if (filledSlots.filled < 10 && window.confirm("Harmonogram jest prawie pusty. Czy chcesz zasymulować dane testowe?")) {
-        console.log("Symulowanie danych harmonogramu dla testów interfejsu...");
-        return simulateScheduleData(areasWithNumberIds, agentsWithSkills);
-      }
+     
       
       return schedule;
     } catch (err) {

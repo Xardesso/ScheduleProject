@@ -5,9 +5,10 @@ import AvailabilityPage from './components/AvailabilityPage';
 import SchedulePage from './components/SchedulePage';
 import { fetchSchedule } from './utils/fetchSchedule';
 import { saveAvailability, fetchAvailability, deleteAvailability } from './utils/fetchAvailability';
+import RequiredAvailabilityPage from './components/RequiredAvailabilityPage';
 
 export default function App() {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1); // 1=Dostępność, 2=Grafik, 3=Wymagana liczba osób
   const [selectedAgent, setAgent] = useState(null);
   const [availability, setAvailability] = useState({});
   const [schedule, setSchedule] = useState(null);
@@ -39,8 +40,10 @@ export default function App() {
   // Zmodyfikowana funkcja do ładowania zapisanych dostępności
   useEffect(() => {
     const loadAvailability = async () => {
+      setIsLoading(true);
       try {
-        const availabilityData = await fetchAvailability();
+        // Przekaż selectedWeek do funkcji fetchAvailability
+        const availabilityData = await fetchAvailability(null, selectedWeek);
         
         if (availabilityData && Array.isArray(availabilityData)) {
           // Przekształć dane z API na format używany przez komponent
@@ -57,18 +60,21 @@ export default function App() {
             formattedData[agentId][slotKey] = isAvailable;
           });
           
-          console.log("Załadowane dane dostępności:", formattedData);
+          console.log("Załadowane dane dostępności dla tygodnia:", selectedWeek[0].toISOString().split('T')[0], "-", selectedWeek[6].toISOString().split('T')[0]);
+          console.log("Dane dostępności:", formattedData);
           setAvailability(formattedData);
         } else {
           console.error("Nieprawidłowy format danych z API:", availabilityData);
         }
       } catch (error) {
         console.error("Błąd podczas ładowania dostępności:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     loadAvailability();
-  }, []);
+  }, [selectedWeek]); // Dodano selectedWeek jako zależność, żeby efekt uruchamiał się przy zmianie tygodnia
 
   // NOWY EFEKT: Aktualizuje harmonogram, gdy zmienia się wybrany tydzień
   useEffect(() => {
@@ -88,7 +94,7 @@ export default function App() {
       
       updateScheduleForWeek();
     }
-  }, [selectedWeek, page, agents]);
+  }, [selectedWeek, page, agents, availability]); // Dodano availability jako zależność
 
   // Zmodyfikowana funkcja toggleSlot obsługująca odznaczanie niezapisanych zmian
   const toggleSlot = (agentId, slot, slotInfo) => {
@@ -176,8 +182,8 @@ export default function App() {
       const results = await Promise.all(savePromises);
       console.log("Wyniki zapisywania:", results);
       
-      // Po zapisaniu, odśwież dane dostępności
-      const freshData = await fetchAvailability();
+      // Po zapisaniu, odśwież dane dostępności z uwzględnieniem wybranego tygodnia
+      const freshData = await fetchAvailability(null, selectedWeek);
       if (freshData && Array.isArray(freshData)) {
         const formattedData = {};
         
@@ -247,6 +253,7 @@ export default function App() {
 
   // Funkcja do zmiany tygodnia
   const changeWeek = (direction) => {
+    console.log(`Zmiana tygodnia: ${direction > 0 ? 'następny' : 'poprzedni'}`);
     const newDates = selectedWeek.map(date => {
       const newDate = new Date(date);
       newDate.setDate(date.getDate() + (direction * 7));
@@ -276,13 +283,50 @@ export default function App() {
         <button onClick={() => changeWeek(1)}>Następny tydzień ❯</button>
       </div>
 
-      <button 
-        onClick={() => page === 1 ? goToSchedule() : setPage(1)}
-        style={{ marginBottom: 20 }}
-        disabled={isLoading}
-      >
-        {isLoading ? 'Ładowanie...' : page === 1 ? '→ Pokaż grafik' : '← Zmień dostępność'}
-      </button>
+      {/* Przyciski nawigacyjne między stronami */}
+      <div style={{ marginBottom: 20, display: 'flex', gap: '10px' }}>
+        <button 
+          onClick={() => setPage(1)} 
+          disabled={page === 1 || isLoading}
+          style={{ 
+            padding: '8px 16px',
+            backgroundColor: page === 1 ? '#e0e0e0' : '#f5f5f5',
+            fontWeight: page === 1 ? 'bold' : 'normal',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
+        >
+          Dostępność agentów
+        </button>
+        
+        <button 
+          onClick={() => goToSchedule()} 
+          disabled={page === 2 || isLoading}
+          style={{ 
+            padding: '8px 16px',
+            backgroundColor: page === 2 ? '#e0e0e0' : '#f5f5f5',
+            fontWeight: page === 2 ? 'bold' : 'normal',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
+        >
+          Grafik pracy
+        </button>
+        
+        <button 
+          onClick={() => setPage(3)} 
+          disabled={page === 3 || isLoading}
+          style={{ 
+            padding: '8px 16px',
+            backgroundColor: page === 3 ? '#e0e0e0' : '#f5f5f5',
+            fontWeight: page === 3 ? 'bold' : 'normal',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
+        >
+          Wymagana liczba osób
+        </button>
+      </div>
 
       {agents.length === 0 ? (
         <div>Brak danych agentów. Dodaj agentów w systemie.</div>
@@ -299,14 +343,18 @@ export default function App() {
           pendingChanges={pendingChanges}
           onSaveChanges={saveAllChanges}
         />
-      ) : (
+      ) : page === 2 ? (
         <SchedulePage
           agents={agents}
           schedule={schedule}
           areas={areas}
           selectedWeek={selectedWeek}
         />
-      )}
+      ) : page === 3 ? (
+        <RequiredAvailabilityPage
+          onNavigateToAvailability={() => setPage(1)}
+        />
+      ) : null}
     </div>
   );
 }
