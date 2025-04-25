@@ -1,11 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { days, hours } from '../constants';
 
 export default function SchedulePage({ agents, schedule, areas, selectedWeek }) {
+  const [requiredPeople, setRequiredPeople] = useState({});
+  
+  // Pobierz wymagane liczby osób z API
+  useEffect(() => {
+    const fetchRequiredAvailability = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/required-availability');
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Przekształć dane do formatu indeksowanego godziną i obszarem
+          const byHourAndArea = {};
+          data.forEach(item => {
+            if (!byHourAndArea[item.hour]) {
+              byHourAndArea[item.hour] = {};
+            }
+            byHourAndArea[item.hour][1] = item.reqpeople_1 || 1;
+            byHourAndArea[item.hour][2] = item.reqpeople_2 || 1;
+            byHourAndArea[item.hour][3] = item.reqpeople_3 || 1;
+          });
+          
+          console.log("Pobrane wymagane liczby osób:", byHourAndArea);
+          setRequiredPeople(byHourAndArea);
+        }
+      } catch (error) {
+        console.error("Błąd podczas pobierania wymaganej liczby osób:", error);
+      }
+    };
+    
+    fetchRequiredAvailability();
+  }, []);
+
   if (!schedule) return <p>Ładowanie grafiku…</p>;
 
-  // Dodajmy log do debugowania
-  console.log("Renderowanie SchedulePage:", { schedule, agents, areas });
+  console.log("Renderowanie SchedulePage:", { schedule, agents, areas, requiredPeople });
 
   // Mapowanie stringowych ID obszarów na numeryczne ID używane w harmonogramie
   const areaIdMap = {
@@ -43,9 +74,14 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     return agentsList.find(a => String(a.id) === idToFind);
   };
 
-  // Nowa funkcja do renderowania agentów - obsługuje zarówno pojedynczego agenta jak i tablicę
-  const renderAgents = (assigned, agentsList) => {
-    if (assigned === null || assigned === undefined) {
+  // Funkcja do renderowania agentów z informacją o brakujących osobach
+  const renderAgents = (assigned, requiredCount, agentsList) => {
+    // Jeśli nic nie jest przydzielone
+    if (!assigned || (Array.isArray(assigned) && assigned.length === 0)) {
+      // Jeśli jest wymagane więcej niż 0 osób, pokaż ilość brakujących
+      if (requiredCount && requiredCount > 0) {
+        return <div style={{ color: 'red' }}>— (brak {requiredCount})</div>;
+      }
       return "—";
     }
     
@@ -56,9 +92,9 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
         .map(id => findAgent(id, agentsList))
         .filter(a => a !== null);
       
-      if (assignedAgents.length === 0) return "—";
+      // Jeśli brakuje agentów - pokaż listę + informację o brakujących
+      const missing = requiredCount - assignedAgents.length;
       
-      // Zwróć listę z nazwami agentów
       return (
         <div style={{ textAlign: 'left', fontSize: '0.85em' }}>
           {assignedAgents.map((agent, index) => (
@@ -66,12 +102,30 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
               {agent.name}
             </div>
           ))}
+          {missing > 0 && (
+            <div style={{ color: 'red', fontWeight: 'bold', marginTop: '4px' }}>
+              — (brak {missing})
+            </div>
+          )}
         </div>
       );
     } 
     
     // Obsługa pojedynczego agenta (dla kompatybilności wstecznej)
     const agent = findAgent(assigned, agentsList);
+    
+    // Jeśli wymagana liczba osób > 1, a przydzielona = 1
+    if (requiredCount > 1 && agent) {
+      return (
+        <div>
+          <div>{agent.name}</div>
+          <div style={{ color: 'red', fontWeight: 'bold' }}>
+            — (brak {requiredCount - 1})
+          </div>
+        </div>
+      );
+    }
+    
     return agent?.name || "—";
   };
 
@@ -79,9 +133,6 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
     <div>
       <h2>Ułożony grafik</h2>
       {areas.map(area => {
-        // Wypisz identyfikatory dla diagnostyki
-        console.log(`Renderowanie obszaru: ${area.name}, ID: ${area.id}, numeryczne ID: ${autoAreaIdMap[area.id]}`);
-        
         return (
           <div key={area.id} style={{ marginBottom: 24 }}>
             <h3>{area.name}</h3>
@@ -97,27 +148,41 @@ export default function SchedulePage({ agents, schedule, areas, selectedWeek }) 
                   <tr key={h}>
                     <td><b>{h}:00</b></td>
                     {days.map((_, di) => {
-                      // Użyj zmapowanego ID obszaru zamiast bezpośrednio area.id
+                      // Użyj zmapowanego ID obszaru
                       const mappedAreaId = autoAreaIdMap[area.id];
                       
                       // Bezpieczne uzyskiwanie przypisanego agenta/agentów
                       const assigned = schedule[di]?.[h]?.[mappedAreaId];
+                      
+                      // Dodaj logowanie dla diagnostyki - jak żądano w zapytaniu
+                      console.log(`Obszar ${area.name}, ID: ${mappedAreaId}, 
+                        Przypisani agenci dla godz ${h}, dzień ${di}:`, 
+                        schedule[di]?.[h]?.[mappedAreaId]);
+                      
+                      // Pobierz wymaganą liczbę osób dla tego obszaru i godziny
+                      const requiredCount = requiredPeople[h]?.[mappedAreaId] || 1;
                       
                       // Sprawdź liczbę agentów dla stylizacji
                       const agentCount = Array.isArray(assigned) ? 
                         assigned.filter(id => id !== null).length : 
                         (assigned !== null && assigned !== undefined ? 1 : 0);
                       
+                      // Sprawdź, czy jest niedobór agentów (nawet jeden brakujący)
+                      const isShortage = agentCount < requiredCount;
+                      
+                      // Ustaw tło: niebieskie tylko gdy wszystkie wymagane sloty są wypełnione
+                      const cellBackground = isShortage ? '#ffebee' : (agentCount > 0 ? '#def' : '#f5f5f5');
+                      
                       return (
                         <td key={di}
                             style={{
-                              width: 120, // Zwiększona szerokość dla lepszego wyświetlania wielu agentów
-                              height: agentCount > 1 ? 'auto' : 40, // Dynamiczna wysokość zależna od liczby agentów
+                              width: 120,
+                              height: agentCount > 1 || isShortage ? 'auto' : 40,
                               textAlign: Array.isArray(assigned) ? 'left' : 'center',
-                              background: agentCount > 0 ? '#def' : '#f5f5f5',
+                              background: cellBackground,
                               padding: '4px 6px'
                             }}>
-                          {renderAgents(assigned, agents)}
+                          {renderAgents(assigned, requiredCount, agents)}
                         </td>
                       );
                     })}
