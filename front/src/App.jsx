@@ -163,7 +163,7 @@ export default function App() {
       await loadAvailability();
       
       setPendingChanges([]);
-      
+
     } catch (error) {
       console.error('Błąd podczas zapisywania zmian:', error);
       alert('Wystąpił błąd podczas zapisywania zmian.');
