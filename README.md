@@ -27,6 +27,8 @@ Status projektu:
 
 Projekt jest prototypem demonstrującym koncepcję automatycznego planowania grafiku pracy. Aktualnie zaimplementowane są podstawowe funkcjonalności, a system scoringu opiera się na uproszczonym modelu oceny pracowników.
 
-Dalszy rozwój
+Dalszy rozwój:
+
 Integracja z zewnętrznymi systemami statystycznymi (BI)
+
 Rozbudowany algorytm scoringu uwzględniający wskaźniki CSAT
