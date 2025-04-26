@@ -28,7 +28,6 @@ class RequiredAvailability
 
     public function __construct()
     {
-        // Ustaw domyślne wartości w konstruktorze
         $this->reqpeople_1 = 1;
         $this->reqpeople_2 = 1;
         $this->reqpeople_3 = 1;

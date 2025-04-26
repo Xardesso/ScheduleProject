@@ -10,7 +10,6 @@ const SkillManagementPage = () => {
   const [message, setMessage] = useState('');
   const [showMessage, setShowMessage] = useState(false);
 
-  // Pobierz listę agentów, obszarów i umiejętności
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
